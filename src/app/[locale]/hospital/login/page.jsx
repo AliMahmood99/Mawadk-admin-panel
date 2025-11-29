@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/stores/authStore";
 import toast, { Toaster } from "react-hot-toast";
 import { Mail, Lock, Loader2, Building2, Globe, Heart, Users, ArrowRight, Sparkles } from "lucide-react";
