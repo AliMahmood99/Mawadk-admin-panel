@@ -158,6 +158,110 @@
     "sent": "Sent",
     "noNotifications": "No notifications found"
   },
+  "doctor": {
+    "dashboard": {
+      "title": "Doctor Dashboard",
+      "subtitle": "Manage your appointments and patients",
+      "todayAppointments": "Today's Appointments",
+      "totalPatients": "Total Patients",
+      "avgRating": "Average Rating",
+      "earnings": "Monthly Earnings",
+      "upcomingAppointments": "Upcoming Appointments",
+      "recentReviews": "Recent Reviews",
+      "quickStats": "Quick Stats",
+      "viewAll": "View All"
+    },
+    "appointments": {
+      "title": "Appointments",
+      "subtitle": "Manage your appointments",
+      "totalAppointments": "Total Appointments",
+      "todayAppointments": "Today's Appointments",
+      "upcoming": "Upcoming",
+      "completed": "Completed",
+      "patientInfo": "Patient Info",
+      "appointmentDetails": "Appointment Details",
+      "noAppointments": "No appointments found"
+    },
+    "patients": {
+      "title": "Patients",
+      "subtitle": "Manage your patients",
+      "totalPatients": "Total Patients",
+      "activePatients": "Active Patients",
+      "newThisMonth": "New This Month",
+      "patientInfo": "Patient Info",
+      "lastVisit": "Last Visit",
+      "totalVisits": "Total Visits",
+      "noPatients": "No patients found"
+    },
+    "reviews": {
+      "title": "Reviews",
+      "subtitle": "Patient reviews and ratings",
+      "totalReviews": "Total Reviews",
+      "avgRating": "Average Rating",
+      "positive": "Positive",
+      "needsAttention": "Needs Attention",
+      "patientAndRating": "Patient & Rating",
+      "comment": "Comment",
+      "date": "Date",
+      "noReviews": "No reviews found"
+    },
+    "schedule": {
+      "title": "Schedule",
+      "subtitle": "Manage your working hours",
+      "workingHours": "Working Days",
+      "timeSlot": "Weekly Slots",
+      "available": "Available",
+      "dayOff": "Day Off",
+      "duration": "Slot Duration",
+      "saveSchedule": "Save Schedule"
+    },
+    "profile": {
+      "title": "Doctor Profile",
+      "subtitle": "Manage your profile information",
+      "basicInfo": "Basic Information",
+      "professionalInfo": "Professional Information",
+      "doctorName": "Doctor Name",
+      "specialty": "Specialty",
+      "experience": "Experience",
+      "consultationFee": "Consultation Fee",
+      "qualification": "Qualifications",
+      "bio": "Biography",
+      "languages": "Languages",
+      "hospital": "Hospital",
+      "uploadPhoto": "Upload Photo",
+      "updateProfile": "Update Profile"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Manage your account settings and preferences",
+      "passwordSettings": "Change Password",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "notificationSettings": "Notification Settings",
+      "emailNotifications": "Email Notifications",
+      "pushNotifications": "Push Notifications",
+      "smsNotifications": "SMS Notifications",
+      "appointmentReminders": "Appointment Reminders",
+      "patientMessages": "Patient Messages",
+      "reviews": "New Reviews",
+      "systemUpdates": "System Updates",
+      "saveSettings": "Save Settings",
+      "changePassword": "Change Password"
+    },
+    "earnings": {
+      "title": "Earnings",
+      "subtitle": "Track your earnings and transactions",
+      "totalEarnings": "Total Earnings",
+      "thisMonth": "This Month",
+      "pending": "Pending",
+      "patient": "Patient",
+      "appointmentType": "Appointment Type",
+      "date": "Date",
+      "amount": "Amount",
+      "noTransactions": "No transactions found"
+    }
+  },
   "hospital": {
     "doctors": {
       "title": "Doctors Management",
