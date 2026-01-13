@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
-export default function RootPage() {
+export default async function RootPage({ params }) {
+  const { locale } = await params;
   // Redirect to admin login by default
-  redirect("/admin/login");
+  redirect(`/${locale}/admin/login`);
 }

@@ -8,8 +8,10 @@ const intlMiddleware = createMiddleware(routing);
 export default function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Extract locale from pathname
-  const locale = pathname.split("/")[1] || "en";
+  // Extract locale from pathname and validate it
+  const supportedLocales = ["en", "ar"];
+  const pathLocale = pathname.split("/")[1];
+  const locale = supportedLocales.includes(pathLocale) ? pathLocale : "en";
 
   // Public routes (don't need authentication)
   const publicRoutes = [

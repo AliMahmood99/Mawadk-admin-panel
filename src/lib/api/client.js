@@ -2,7 +2,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://backend.qarar-sat.com/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://backend.qarar-sat.com/api/v1/dashboard";
 const API_SECRET_KEY = process.env.NEXT_PUBLIC_API_SECRET_KEY || "zAyuqt8Fb#&*t-rnL3q%$";
 
 // Create axios instance
