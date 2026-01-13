@@ -213,7 +213,7 @@ export default function NotificationsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             {paginatedNotifications.length === 0 ? (
               <div className="text-center py-12">
                 <Bell className="h-12 w-12 text-slate-300 mx-auto mb-4" />

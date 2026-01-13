@@ -133,12 +133,12 @@ export default function AdminLoginPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-4 h-4 text-primary" />
                   <p className="font-semibold text-sm text-primary">
-                    {locale === "ar" ? "بيانات التجربة" : "Demo Credentials"}
+                    {locale === "ar" ? "بيانات الدخول" : "Login Credentials"}
                   </p>
                 </div>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  <p><strong>{tCommon("email")}:</strong> admin@mawadk.qa</p>
-                  <p><strong>{tCommon("password")}:</strong> admin123</p>
+                  <p><strong>{tCommon("email")}:</strong> admin@gmail.com</p>
+                  <p><strong>{tCommon("password")}:</strong> 12345678</p>
                 </div>
               </div>
 
@@ -151,7 +151,7 @@ export default function AdminLoginPage() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="admin@mawadk.qa"
+                      placeholder="admin@gmail.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10 h-12 bg-muted/50 border-muted focus:border-primary focus:ring-primary/20"

@@ -1,46 +1,180 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Edit, Trash2, Eye, Filter, Download, MoreVertical, Users, UserCheck, UserPlus, Mail, Phone, CheckCircle, XCircle } from "lucide-react";
-import { users } from "@/data/mock/users";
+import {
+  UserViewModal,
+  DeleteConfirmModal,
+} from "@/components/users/UserModals";
+import {
+  Search, Trash2, Eye, Download, MoreVertical, Users,
+  UserCheck, UserPlus, Mail, Phone, CheckCircle, XCircle, Loader2,
+  RefreshCw
+} from "lucide-react";
+import CustomersService from "@/lib/services/customers.service";
+import toast from "react-hot-toast";
 
 export default function UsersPage() {
-  const t = useTranslations("common");
+  const t = useTranslations("users");
+  const tc = useTranslations("common");
+
+  // State
+  const [customers, setCustomers] = useState([]);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [reports, setReports] = useState({ total_users: "0", active_users: { value: "0", percentage: 0 }, new_this_month: { value: "0", growth: 0 } });
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const dropdownRef = useRef(null);
   const itemsPerPage = 10;
 
-  // Filter users based on search
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery)
-  );
+  // Modal states
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  // Fetch customers from API
+  const fetchCustomers = async (page = 1, search = "") => {
+    setIsLoading(true);
+    try {
+      const result = await CustomersService.getCustomers({
+        page,
+        per_page: itemsPerPage,
+        search: search || undefined,
+      });
 
-  // Calculate analytics
-  const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.status === "active").length;
-  const newThisMonth = users.filter(u => {
-    const createdDate = new Date(u.created_at);
-    const now = new Date();
-    return createdDate.getMonth() === now.getMonth() && createdDate.getFullYear() === now.getFullYear();
-  }).length;
+      if (result.success) {
+        setCustomers(result.data.items || []);
+        setMeta(result.data.meta || { current_page: 1, last_page: 1, total: 0 });
+        setReports(result.data.reports || { total_users: "0", active_users: { value: "0", percentage: 0 }, new_this_month: { value: "0", growth: 0 } });
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      toast.error("حدث خطأ أثناء جلب البيانات");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCustomers(currentPage, searchQuery);
+  }, [currentPage]);
+
+  // Search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      fetchCustomers(1, searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Handle status toggle
+  const handleToggleStatus = async (customerId) => {
+    setOpenDropdown(null);
+    setIsViewModalOpen(false);
+    const loadingToast = toast.loading("جاري تحديث الحالة...");
+    try {
+      const result = await CustomersService.updateCustomerStatus(customerId);
+      toast.dismiss(loadingToast);
+      if (result.success) {
+        toast.success(result.message || "تم تحديث الحالة بنجاح");
+        fetchCustomers(currentPage, searchQuery);
+      } else {
+        toast.error(result.message || "فشل تحديث الحالة");
+      }
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      console.error("Toggle status error:", error);
+      toast.error("حدث خطأ أثناء تحديث الحالة");
+    }
+  };
+
+  // Handle delete - show confirmation modal
+  const handleDeleteClick = (customer) => {
+    setOpenDropdown(null);
+    setCustomerToDelete(customer);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = async () => {
+    if (!customerToDelete) return;
+
+    setIsSubmitting(true);
+    try {
+      const result = await CustomersService.deleteCustomer(customerToDelete.id);
+      if (result.success) {
+        toast.success(result.message || "تم الحذف بنجاح");
+        setIsDeleteModalOpen(false);
+        setIsViewModalOpen(false);
+        setCustomerToDelete(null);
+        fetchCustomers(currentPage, searchQuery);
+      } else {
+        toast.error(result.message || "فشل الحذف");
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("حدث خطأ أثناء الحذف");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle view details - open modal
+  const handleViewDetails = async (customerId) => {
+    setOpenDropdown(null);
+    setIsLoadingDetails(true);
+    setIsViewModalOpen(true);
+
+    try {
+      const result = await CustomersService.getCustomerById(customerId);
+      if (result.success) {
+        setSelectedCustomer(result.data);
+      } else {
+        toast.error(result.message || "فشل جلب التفاصيل");
+        setIsViewModalOpen(false);
+      }
+    } catch (error) {
+      console.error("View details error:", error);
+      toast.error("حدث خطأ أثناء جلب التفاصيل");
+      setIsViewModalOpen(false);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  // Handle export
+  const handleExport = async () => {
+    const loadingToast = toast.loading("جاري تصدير البيانات...");
+    try {
+      const result = await CustomersService.exportCustomers({ search: searchQuery });
+      toast.dismiss(loadingToast);
+      if (result.success && result.data?.url) {
+        window.open(result.data.url, "_blank");
+        toast.success("تم تصدير البيانات بنجاح");
+      } else {
+        toast.error(result.message || "فشل التصدير");
+      }
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      console.error("Export error:", error);
+      toast.error("حدث خطأ أثناء التصدير");
+    }
+  };
 
   const getInitials = (name) => {
     if (!name) return "??";
@@ -56,193 +190,281 @@ export default function UsersPage() {
     setOpenDropdown(openDropdown === userId ? null : userId);
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <DashboardLayout requiredUserType="admin">
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Name Management</h1>
-          <p className="text-slate-600 mt-1">Manage all platform users</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+          <p className="text-slate-500 mt-1">{t("subtitle")}</p>
         </div>
-        <Button className="gap-2 h-10 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" />
-          Add User
+        <Button variant="outline" className="gap-2 h-10" onClick={handleExport}>
+          <Download className="w-4 h-4" />
+          {t("exportUsers")}
         </Button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">{t("totalUsers")}</CardTitle>
               <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{totalUsers.toLocaleString()}</div>
-            <p className="text-xs text-slate-500 mt-1">All registered users</p>
+            <div className="text-3xl font-bold text-slate-900">
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : parseInt(reports.total_users || meta.total || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">{t("allRegistered")}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Active Users</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">{t("activeUsers")}</CardTitle>
               <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center">
                 <UserCheck className="h-5 w-5 text-emerald-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{activeUsers.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-slate-900">
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : parseInt(reports.active_users?.value || 0).toLocaleString()}
+            </div>
             <p className="text-xs text-emerald-600 mt-1">
-              {Math.round((activeUsers / totalUsers) * 100)}% of total users
+              {reports.active_users?.percentage || 0}% {t("ofTotal")}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">New This Month</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">{t("newThisMonth")}</CardTitle>
               <div className="h-10 w-10 bg-pink-50 rounded-lg flex items-center justify-center">
                 <UserPlus className="h-5 w-5 text-pink-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{newThisMonth.toLocaleString()}</div>
-            <p className="text-xs text-slate-500 mt-1">New registrations</p>
+            <div className="text-3xl font-bold text-slate-900">
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : parseInt(reports.new_this_month?.value || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {reports.new_this_month?.growth > 0 ? (
+                <span className="text-emerald-600">+{reports.new_this_month.growth}%</span>
+              ) : (
+                t("noGrowth")
+              )}{" "}
+              {t("fromLastMonth")}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Card */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-200 shadow-sm">
         <CardContent className="p-0">
-          <div className="px-6 py-4 border-b border-slate-200">
+          {/* Table Header */}
+          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-semibold text-slate-900">All Users ({filteredUsers.length})</h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Search"
-                  className="pl-10 w-64"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                />
+              <div className="flex items-center gap-3">
+                <h3 className="font-semibold text-slate-900">{t("allUsers")}</h3>
+                <Badge variant="secondary" className="bg-slate-200 text-slate-700">
+                  {meta.total || 0}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchCustomers(currentPage, searchQuery)}
+                  disabled={isLoading}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder={t("searchPlaceholder")}
+                    className="pr-10 w-72 h-10 bg-white"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            {paginatedUsers.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">No users found</p>
+          <div className="overflow-visible">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                  <p className="text-slate-500">{t("loadingData")}</p>
+                </div>
+              </div>
+            ) : customers.length === 0 ? (
+              <div className="text-center py-16">
+                <Users className="h-16 w-16 text-slate-200 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">{t("noUsers")}</h3>
+                <p className="text-slate-500">{t("noUsersFound")}</p>
               </div>
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left w-16">#</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Name</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Email</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Phone</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Date Joined</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Status</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Actions</th>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right w-16">#</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("user")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("contact")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("bookings")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("dateJoined")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("status")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-center w-20">{t("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedUsers.map((user, index) => (
+                  {customers.map((customer, index) => (
                     <tr
-                      key={user.id}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-all cursor-pointer"
+                      key={customer.id}
+                      className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                     >
                       <td className="py-4 px-6">
-                        <div className="text-sm font-medium text-slate-500">
-                          #{user.id}
-                        </div>
+                        <span className="text-sm text-slate-500 font-medium">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </span>
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center">
-                            <span className="text-white font-semibold text-sm">
-                              {getInitials(user.name)}
-                            </span>
-                          </div>
+                        <button
+                          onClick={() => handleViewDetails(customer.id)}
+                          className="flex items-center gap-3 text-right hover:opacity-80 transition-opacity"
+                        >
+                          {customer.image ? (
+                            <img
+                              src={customer.image}
+                              alt={customer.name}
+                              className="h-10 w-10 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+                              <span className="text-white font-semibold text-sm">
+                                {getInitials(customer.name)}
+                              </span>
+                            </div>
+                          )}
                           <div>
-                            <div className="font-medium text-slate-900">{user.name}</div>
-                            <div className="text-xs text-slate-500">{user.name_ar}</div>
+                            <div className="font-medium text-slate-900">{customer.name}</div>
+                          </div>
+                        </button>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                            <Mail className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="truncate max-w-[150px]">{customer.email || "-"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                            <Phone className="h-3.5 w-3.5 text-slate-400" />
+                            <span dir="ltr">{customer.phone}</span>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-1 text-sm text-slate-700">
-                          <Mail className="h-3 w-3 text-slate-400" />
-                          {user.email}
+                        <div className="text-sm">
+                          <span className="font-semibold text-slate-900">{customer.bookings_count || 0}</span>
+                          <span className="text-slate-500"> {t("booking")}</span>
+                          <div className="text-xs text-slate-500">
+                            {parseFloat(customer.bookings_sum_total || 0).toFixed(0)} QAR
+                          </div>
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-1 text-sm text-slate-700">
-                          <Phone className="h-3 w-3 text-slate-400" />
-                          {user.phone}
+                        <div className="text-sm text-slate-600">
+                          {customer.created_at}
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <div className="text-sm text-slate-700">
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        {user.status === "active" ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-medium">
-                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                            Active
+                        {customer.status ? (
+                          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            {t("active")}
                           </Badge>
                         ) : (
-                          <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200 font-medium">
-                            <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                            {user.status === "blocked" ? "Blocked" : "Inactive"}
+                          <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50 border border-rose-200 gap-1">
+                            <XCircle className="h-3 w-3" />
+                            {t("inactive")}
                           </Badge>
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-2 relative">
-                          <div className="relative">
+                        <div className="flex justify-center">
+                          <div className="relative" ref={openDropdown === customer.id ? dropdownRef : null}>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 hover:bg-slate-100"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleDropdown(user.id);
+                                e.preventDefault();
+                                toggleDropdown(customer.id);
                               }}
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4 text-slate-500" />
                             </Button>
 
-                            {openDropdown === user.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <Eye className="h-4 w-4" />
-                                  View Details
+                            {openDropdown === customer.id && (
+                              <div
+                                className="absolute left-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  onClick={() => handleViewDetails(customer.id)}
+                                >
+                                  <Eye className="h-4 w-4 text-slate-400" />
+                                  {t("viewDetails")}
                                 </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <Edit className="h-4 w-4" />
-                                  Edit User
+                                <button
+                                  className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  onClick={() => handleToggleStatus(customer.id)}
+                                >
+                                  {customer.status ? (
+                                    <>
+                                      <XCircle className="h-4 w-4 text-amber-500" />
+                                      {t("deactivateAccount")}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                      {t("activateAccount")}
+                                    </>
+                                  )}
                                 </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 flex items-center gap-2 border-t border-slate-100">
+                                <div className="border-t border-slate-100 my-1" />
+                                <button
+                                  className="w-full px-3 py-2 text-right text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                                  onClick={() => handleDeleteClick(customer)}
+                                >
                                   <Trash2 className="h-4 w-4" />
-                                  Delete User
+                                  {t("deleteUser")}
                                 </button>
                               </div>
                             )}
@@ -257,31 +479,30 @@ export default function UsersPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {meta.last_page > 1 && (
             <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-slate-200 gap-4">
-              <div className="text-sm text-slate-600">
-                Showing {startIndex + 1} to{" "}
-                {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of{" "}
-                {filteredUsers.length.toLocaleString()} users
+              <div className="text-sm text-slate-500">
+                {t("page")} {meta.current_page} {t("of")} {meta.last_page} ({meta.total} {t("userCount")})
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isLoading}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="h-9"
                 >
-                  {t("previous")}
+                  {t("prev")}
                 </Button>
 
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                {Array.from({ length: Math.min(5, meta.last_page) }, (_, i) => {
                   let pageNum;
-                  if (totalPages <= 5) {
+                  if (meta.last_page <= 5) {
                     pageNum = i + 1;
                   } else if (currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
+                  } else if (currentPage >= meta.last_page - 2) {
+                    pageNum = meta.last_page - 4 + i;
                   } else {
                     pageNum = currentPage - 2 + i;
                   }
@@ -291,11 +512,12 @@ export default function UsersPage() {
                       key={pageNum}
                       variant="outline"
                       size="sm"
-                      className={
+                      disabled={isLoading}
+                      className={`h-9 w-9 p-0 ${
                         currentPage === pageNum
-                          ? "bg-pink-50 text-pink-600 border-pink-200"
+                          ? "bg-primary text-white border-primary hover:bg-primary/90 hover:text-white"
                           : ""
-                      }
+                      }`}
                       onClick={() => setCurrentPage(pageNum)}
                     >
                       {pageNum}
@@ -303,15 +525,17 @@ export default function UsersPage() {
                   );
                 })}
 
-                {totalPages > 5 && currentPage < totalPages - 2 && (
+                {meta.last_page > 5 && currentPage < meta.last_page - 2 && (
                   <>
-                    <span className="text-slate-400">...</span>
+                    <span className="text-slate-400 px-1">...</span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={isLoading}
+                      className="h-9 w-9 p-0"
+                      onClick={() => setCurrentPage(meta.last_page)}
                     >
-                      {totalPages}
+                      {meta.last_page}
                     </Button>
                   </>
                 )}
@@ -319,16 +543,45 @@ export default function UsersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === meta.last_page || isLoading}
+                  onClick={() => setCurrentPage((p) => Math.min(meta.last_page, p + 1))}
+                  className="h-9"
                 >
-                  {t("next")}
+                  {t("nextPage")}
                 </Button>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* View User Details Modal */}
+      <UserViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setSelectedCustomer(null);
+        }}
+        customer={selectedCustomer}
+        isLoading={isLoadingDetails}
+        onToggleStatus={handleToggleStatus}
+        onDelete={(id) => {
+          const customer = customers.find(c => c.id === id);
+          if (customer) handleDeleteClick(customer);
+        }}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setCustomerToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        userName={customerToDelete?.name}
+        isDeleting={isSubmitting}
+      />
     </DashboardLayout>
   );
 }

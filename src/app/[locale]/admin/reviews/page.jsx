@@ -240,7 +240,7 @@ export default function ReviewsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             {paginatedReviews.length === 0 ? (
               <div className="text-center py-12">
                 <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />

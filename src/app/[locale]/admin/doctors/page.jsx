@@ -153,7 +153,7 @@ export default function DoctorsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             {paginatedDoctors.length === 0 ? (
               <div className="text-center py-12">
                 <Stethoscope className="h-12 w-12 text-slate-300 mx-auto mb-4" />

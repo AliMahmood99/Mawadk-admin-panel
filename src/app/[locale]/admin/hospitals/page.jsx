@@ -137,7 +137,7 @@ export default function HospitalsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             {paginatedHospitals.length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="h-12 w-12 text-slate-300 mx-auto mb-4" />

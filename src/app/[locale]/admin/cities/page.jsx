@@ -183,7 +183,7 @@ export default function CitiesPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             {paginatedCities.length === 0 ? (
               <div className="text-center py-12">
                 <MapPin className="h-12 w-12 text-slate-300 mx-auto mb-4" />

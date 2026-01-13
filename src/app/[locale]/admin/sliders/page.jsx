@@ -199,7 +199,7 @@ export default function SlidersPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-visible">
             {paginatedSliders.length === 0 ? (
               <div className="text-center py-12">
                 <ImageIcon className="h-12 w-12 text-slate-300 mx-auto mb-4" />

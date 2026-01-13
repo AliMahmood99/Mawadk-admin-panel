@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import AuthService from "@/lib/services/auth.service";
+import ProfileService from "@/lib/services/profile.service";
 
 const useAuthStore = create(
   persist(
@@ -12,57 +14,9 @@ const useAuthStore = create(
       isLoading: false,
       permissions: [],
 
-      // Mock users for testing
-      mockUsers: {
-        admin: {
-          email: "admin@mawadk.qa",
-          password: "admin123",
-          data: {
-            id: 1,
-            name: "System Administrator",
-            name_ar: "مدير النظام",
-            email: "admin@mawadk.qa",
-            type: "admin",
-            role: "super_admin",
-            avatar: null,
-          }
-        },
-        hospital: {
-          email: "hospital@mawadk.qa",
-          password: "hospital123",
-          data: {
-            id: 1,
-            name: "Sunrise Medical Center",
-            name_ar: "مركز الشروق الطبي",
-            email: "info@sunrise.qa",
-            phone: "+974 4444 1111",
-            type: "hospital",
-            hospital_type: "hospital",
-            avatar: null,
-          }
-        },
-        doctor: {
-          email: "doctor@mawadk.qa",
-          password: "doctor123",
-          data: {
-            id: 1,
-            name: "Dr. Ahmed Khalil",
-            name_ar: "د. أحمد خليل",
-            email: "dr.ahmed@sunrise.qa",
-            phone: "+974 5551 1111",
-            type: "doctor",
-            specialty: "Pediatrics",
-            specialty_ar: "طب الأطفال",
-            hospital_name: "Sunrise Medical Center",
-            hospital_name_ar: "مركز الشروق الطبي",
-            avatar: null,
-          }
-        }
-      },
-
       // Actions
       /**
-       * Login action
+       * Login action - Uses real API
        * @param {Object} credentials - { email, password, userType }
        */
       login: async (credentials) => {
@@ -71,22 +25,18 @@ const useAuthStore = create(
         try {
           const { email, password, userType } = credentials;
 
-          // Simulate API call delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Call the real API
+          const result = await AuthService.login({ email, password });
 
-          // Check mock users
-          const mockUser = get().mockUsers[userType];
-
-          if (!mockUser || mockUser.email !== email || mockUser.password !== password) {
+          if (!result.success) {
             set({ isLoading: false });
             return {
               success: false,
-              message: "Invalid email or password",
+              message: result.message || "فشل تسجيل الدخول",
             };
           }
 
-          // Generate mock token
-          const access_token = `mock_token_${userType}_${Date.now()}`;
+          const { access_token, admin } = result.data;
 
           // Save token to localStorage and cookies
           if (typeof window !== "undefined") {
@@ -98,19 +48,23 @@ const useAuthStore = create(
             document.cookie = `user_type=${userType}; path=/; max-age=${30 * 24 * 60 * 60}`;
           }
 
+          // Fetch permissions after login
+          const permissionsResult = await AuthService.getPermissions();
+          const permissions = permissionsResult.success ? permissionsResult.data : [];
+
           // Update store
           set({
-            user: mockUser.data,
+            user: admin,
             token: access_token,
             userType: userType,
             isAuthenticated: true,
             isLoading: false,
-            permissions: userType === 'admin' ? ['all'] : [], // Admin has all permissions
+            permissions: permissions,
           });
 
           return {
             success: true,
-            message: "Login successful",
+            message: "تم تسجيل الدخول بنجاح",
             userType: userType,
           };
 
@@ -118,22 +72,26 @@ const useAuthStore = create(
           set({ isLoading: false });
           return {
             success: false,
-            message: error.message || "An error occurred during login",
+            message: error.message || "حدث خطأ أثناء تسجيل الدخول",
           };
         }
       },
 
       /**
-       * Logout action
+       * Logout action - Uses real API
        */
       logout: async () => {
         set({ isLoading: true });
 
         try {
+          // Call the real API
+          await AuthService.logout();
+
           // Clear token from localStorage and cookies
           if (typeof window !== "undefined") {
             localStorage.removeItem("access_token");
             localStorage.removeItem("user_type");
+            localStorage.removeItem("auth-storage");
 
             // Clear cookies
             document.cookie = "access_token=; path=/; max-age=0";
@@ -158,6 +116,101 @@ const useAuthStore = create(
       },
 
       /**
+       * Refresh token
+       */
+      refreshToken: async () => {
+        try {
+          const result = await AuthService.refreshToken();
+
+          if (result.success) {
+            const { access_token, admin } = result.data;
+
+            if (typeof window !== "undefined") {
+              localStorage.setItem("access_token", access_token);
+              document.cookie = `access_token=${access_token}; path=/; max-age=${30 * 24 * 60 * 60}`;
+            }
+
+            set({
+              user: admin,
+              token: access_token,
+            });
+
+            return { success: true };
+          }
+
+          return { success: false };
+        } catch (error) {
+          return { success: false };
+        }
+      },
+
+      /**
+       * Fetch and update permissions
+       */
+      fetchPermissions: async () => {
+        try {
+          const result = await AuthService.getPermissions();
+
+          if (result.success) {
+            set({ permissions: result.data });
+            return { success: true, data: result.data };
+          }
+
+          return { success: false, data: [] };
+        } catch (error) {
+          return { success: false, data: [] };
+        }
+      },
+
+      /**
+       * Get profile from API
+       */
+      getProfile: async () => {
+        try {
+          const result = await ProfileService.getProfile();
+
+          if (result.success) {
+            set({ user: result.data });
+            return { success: true, data: result.data };
+          }
+
+          return { success: false, data: null };
+        } catch (error) {
+          return { success: false, data: null };
+        }
+      },
+
+      /**
+       * Update profile
+       */
+      updateProfile: async (data) => {
+        try {
+          const result = await ProfileService.updateAccount(data);
+
+          if (result.success) {
+            set({ user: result.data });
+            return { success: true, data: result.data, message: result.message };
+          }
+
+          return { success: false, message: result.message };
+        } catch (error) {
+          return { success: false, message: error.message };
+        }
+      },
+
+      /**
+       * Change password
+       */
+      changePassword: async (data) => {
+        try {
+          const result = await ProfileService.changePassword(data);
+          return result;
+        } catch (error) {
+          return { success: false, message: error.message };
+        }
+      },
+
+      /**
        * Check if user has permission
        * @param {string} permissionName - Permission to check
        * @returns {boolean}
@@ -166,7 +219,7 @@ const useAuthStore = create(
         const { permissions, user, userType } = get();
 
         // Super Admin has all permissions
-        if (userType === 'admin' || user?.role === 'super_admin') {
+        if (userType === 'admin' || user?.type === 'Admin') {
           return true;
         }
 
@@ -176,7 +229,7 @@ const useAuthStore = create(
 
         // Check if user has the permission
         return permissions.some((perm) => {
-          return perm === permissionName || perm === 'all';
+          return perm.name === permissionName || perm === permissionName || perm === 'all';
         });
       },
 
@@ -248,6 +301,7 @@ const useAuthStore = create(
         user: state.user,
         userType: state.userType,
         isAuthenticated: state.isAuthenticated,
+        permissions: state.permissions,
       }),
     }
   )

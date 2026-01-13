@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   Building2,
   Stethoscope,
   Calendar,
@@ -31,20 +32,37 @@ export default function Sidebar({ userType, locale }) {
   const [hoveredItem, setHoveredItem] = useState(null);
 
   const adminNavigation = [
-    {
-      name: t("dashboard"),
-      href: `/${locale}/admin/dashboard`,
-      icon: LayoutDashboard,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
-      badge: null,
-    },
+    // Dashboard hidden for now
+    // {
+    //   name: t("dashboard"),
+    //   href: `/${locale}/admin/dashboard`,
+    //   icon: LayoutDashboard,
+    //   color: "text-primary",
+    //   bgColor: "bg-primary/10",
+    //   badge: null,
+    // },
     {
       name: t("users"),
       href: `/${locale}/admin/users`,
       icon: Users,
       color: "text-blue-500",
       bgColor: "bg-blue-50",
+      badge: null,
+    },
+    {
+      name: t("admins"),
+      href: `/${locale}/admin/admins`,
+      icon: UserCog,
+      color: "text-slate-600",
+      bgColor: "bg-slate-100",
+      badge: null,
+    },
+    {
+      name: t("providers"),
+      href: `/${locale}/admin/providers`,
+      icon: Building2,
+      color: "text-teal-500",
+      bgColor: "bg-teal-50",
       badge: null,
     },
     {
@@ -233,7 +251,7 @@ export default function Sidebar({ userType, locale }) {
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b border-border/50 px-6 bg-card/80 backdrop-blur-sm">
         <Link
-          href={`/${locale}/${userType}/dashboard`}
+          href={`/${locale}/${userType}/${userType === 'admin' ? 'users' : 'dashboard'}`}
           className="flex items-center gap-3 group transition-all duration-300 hover:scale-105"
         >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300 group-hover:rotate-3">
