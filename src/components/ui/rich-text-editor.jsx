@@ -35,6 +35,7 @@ export default function RichTextEditor({
     []
   );
 
+  // Note: "bullet" is not a separate format - "list" handles both ordered and bullet
   const formats = [
     "header",
     "bold",
@@ -42,7 +43,6 @@ export default function RichTextEditor({
     "underline",
     "strike",
     "list",
-    "bullet",
     "align",
     "link",
   ];

@@ -153,12 +153,17 @@ export default function EditFaqPage() {
 
     try {
       setSaving(true);
+      // API expects translations format with ar/en objects
       const dataToSend = {
-        question_en: formData.question_en || formData.question_ar,
-        question_ar: formData.question_ar,
-        answer_en: formData.answer_en || formData.answer_ar,
-        answer_ar: formData.answer_ar,
-        order: parseInt(formData.order) || 1,
+        ar: {
+          title: formData.question_ar,
+          description: formData.answer_ar,
+        },
+        en: {
+          title: formData.question_en || formData.question_ar,
+          description: formData.answer_en || formData.answer_ar,
+        },
+        sort: parseInt(formData.order) || 1,
         is_active: formData.is_active ? 1 : 0,
       };
 

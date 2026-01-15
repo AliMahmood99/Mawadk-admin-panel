@@ -90,7 +90,8 @@ export default function AddProviderPage() {
       setIsLoadingCategories(true);
       try {
         const result = await ProvidersService.getCategoriesDropdown();
-        if (result.success) {
+        // API returns { status: "success" } not { success: true }
+        if (result.success || result.status === "success") {
           setCategories(result.data || []);
         }
       } catch (error) {
@@ -128,12 +129,27 @@ export default function AddProviderPage() {
   };
 
   const toggleCategory = (categoryId) => {
-    setSelectedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+    // Doctor can only select ONE category
+    if (formData.type === "Doctor") {
+      setSelectedCategories(prev =>
+        prev.includes(categoryId) ? [] : [categoryId]
+      );
+    } else {
+      // Hospital/Clinic can select MULTIPLE categories
+      setSelectedCategories(prev =>
+        prev.includes(categoryId)
+          ? prev.filter(id => id !== categoryId)
+          : [...prev, categoryId]
+      );
+    }
   };
+
+  // Clear extra categories when switching to Doctor type
+  useEffect(() => {
+    if (formData.type === "Doctor" && selectedCategories.length > 1) {
+      setSelectedCategories(prev => prev.slice(0, 1));
+    }
+  }, [formData.type]);
 
   const validateForm = () => {
     const newErrors = {};

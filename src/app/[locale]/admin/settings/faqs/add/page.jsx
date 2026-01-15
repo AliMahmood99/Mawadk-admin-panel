@@ -81,20 +81,26 @@ export default function AddFaqPage() {
 
     try {
       setSaving(true);
+      // API expects translations format with ar/en objects
       const dataToSend = {
-        question_en: formData.question_en || formData.question_ar,
-        question_ar: formData.question_ar,
-        answer_en: formData.answer_en || formData.answer_ar,
-        answer_ar: formData.answer_ar,
-        order: parseInt(formData.order) || 1,
+        ar: {
+          title: formData.question_ar,
+          description: formData.answer_ar,
+        },
+        en: {
+          title: formData.question_en || formData.question_ar,
+          description: formData.answer_en || formData.answer_ar,
+        },
+        sort: parseInt(formData.order) || 1,
         is_active: formData.is_active ? 1 : 0,
       };
 
       const response = await SettingsService.createFaq(dataToSend);
 
-      if (response.success) {
+      // API returns { status: "success" } not { success: true }
+      if (response.success || response.status === "success") {
         toast.success(t("createSuccess") || "FAQ created successfully");
-        router.push(`/admin/settings/faqs`);
+        router.push(`/${locale}/admin/settings/faqs`);
       } else {
         toast.error(response.message || t("createError") || "Failed to create FAQ");
       }

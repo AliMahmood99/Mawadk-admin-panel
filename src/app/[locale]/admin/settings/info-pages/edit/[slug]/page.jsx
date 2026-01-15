@@ -141,11 +141,16 @@ export default function EditInfoPagePage() {
 
     try {
       setSaving(true);
+      // API expects translations format with ar/en objects
       const dataToSend = {
-        title_en: formData.title_en || formData.title_ar,
-        title_ar: formData.title_ar,
-        content_en: formData.content_en || formData.content_ar,
-        content_ar: formData.content_ar,
+        ar: {
+          title: formData.title_ar,
+          description: formData.content_ar,
+        },
+        en: {
+          title: formData.title_en || formData.title_ar,
+          description: formData.content_en || formData.content_ar,
+        },
       };
 
       const response = await SettingsService.updateInfoPage(slug, dataToSend);
