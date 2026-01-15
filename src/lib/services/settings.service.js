@@ -1,4 +1,4 @@
-import api from "../api";
+import apiClient from "../api/client";
 
 const SettingsService = {
   // ==================== General Settings ====================
@@ -8,7 +8,7 @@ const SettingsService = {
    * @returns {Promise<Object>} Settings data with logo, contact info, fee percent
    */
   async getSettings() {
-    const response = await api.get("/get-settings");
+    const response = await apiClient.get("/get-settings");
     return response.data;
   },
 
@@ -37,7 +37,7 @@ const SettingsService = {
       formData.append("fee_percent", data.fee_percent);
     }
 
-    const response = await api.post("/update-settings", formData, {
+    const response = await apiClient.post("/update-settings", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -56,7 +56,7 @@ const SettingsService = {
    * @returns {Promise<Object>} FAQs list with pagination
    */
   async getFaqs(params = {}) {
-    const response = await api.get("/faqs", { params });
+    const response = await apiClient.get("/faqs", { params });
     return response.data;
   },
 
@@ -66,7 +66,7 @@ const SettingsService = {
    * @returns {Promise<Object>} FAQ data
    */
   async getFaqById(id) {
-    const response = await api.get(`/faqs/${id}`);
+    const response = await apiClient.get(`/faqs/${id}`);
     return response.data;
   },
 
@@ -82,7 +82,7 @@ const SettingsService = {
    * @returns {Promise<Object>} Created FAQ
    */
   async createFaq(data) {
-    const response = await api.post("/faqs", data);
+    const response = await apiClient.post("/faqs", data);
     return response.data;
   },
 
@@ -93,7 +93,7 @@ const SettingsService = {
    * @returns {Promise<Object>} Updated FAQ
    */
   async updateFaq(id, data) {
-    const response = await api.post(`/faqs/${id}`, data);
+    const response = await apiClient.post(`/faqs/${id}`, data);
     return response.data;
   },
 
@@ -103,7 +103,7 @@ const SettingsService = {
    * @returns {Promise<Object>} Deletion result
    */
   async deleteFaq(id) {
-    const response = await api.delete(`/faqs/${id}`);
+    const response = await apiClient.delete(`/faqs/${id}`);
     return response.data;
   },
 
@@ -115,7 +115,7 @@ const SettingsService = {
    * @returns {Promise<Object>} Info page data with title and content
    */
   async getInfoPage(slug) {
-    const response = await api.get(`/info/${slug}`);
+    const response = await apiClient.get(`/info/${slug}`);
     return response.data;
   },
 
@@ -130,7 +130,7 @@ const SettingsService = {
    * @returns {Promise<Object>} Updated info page
    */
   async updateInfoPage(slug, data) {
-    const response = await api.post(`/info/${slug}`, data);
+    const response = await apiClient.post(`/info/${slug}`, data);
     return response.data;
   },
 };
