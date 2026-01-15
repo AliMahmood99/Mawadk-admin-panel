@@ -68,10 +68,23 @@ export default function FaqsListPage() {
         params.search = searchQuery;
       }
       const response = await SettingsService.getFaqs(params);
-      if (response.success) {
-        setFaqs(response.data?.data || []);
-        setTotalPages(response.data?.last_page || 1);
-        setTotalItems(response.data?.total || 0);
+      // API returns { status: "success" } not { success: true }
+      if (response.success || response.status === "success") {
+        // API returns data.Faqs (capital F) or data.data
+        const faqsData = response.data?.Faqs || response.data?.data || [];
+        // Map API structure to expected structure
+        const mappedFaqs = faqsData.map(faq => ({
+          id: faq.id,
+          question_ar: faq.title || faq.question_ar || "",
+          question_en: faq.title_en || faq.question_en || faq.title || "",
+          answer_ar: faq.description || faq.answer_ar || "",
+          answer_en: faq.description_en || faq.answer_en || "",
+          order: faq.sort || faq.order || 0,
+          is_active: faq.is_active !== undefined ? faq.is_active : true,
+        }));
+        setFaqs(mappedFaqs);
+        setTotalPages(response.data?.last_page || response.data?.meta?.last_page || 1);
+        setTotalItems(response.data?.total || response.data?.meta?.total || faqsData.length);
       }
     } catch (error) {
       console.error("Error fetching FAQs:", error);

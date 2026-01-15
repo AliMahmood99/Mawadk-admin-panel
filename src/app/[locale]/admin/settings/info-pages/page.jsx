@@ -56,22 +56,49 @@ export default function InfoPagesListPage() {
           SettingsService.getInfoPage("terms-and-conditions").catch(() => null),
         ]);
 
+        // Helper function to extract translation data
+        const getTranslationData = (data) => {
+          if (!data) return { title_ar: "", title_en: "", content_ar: "", content_en: "" };
+
+          // If API returns translations array
+          if (data.translations && Array.isArray(data.translations)) {
+            const arTrans = data.translations.find(t => t.locale === "ar") || {};
+            const enTrans = data.translations.find(t => t.locale === "en") || {};
+            return {
+              title_ar: arTrans.title || "",
+              title_en: enTrans.title || "",
+              content_ar: arTrans.description || arTrans.content || "",
+              content_en: enTrans.description || enTrans.content || "",
+            };
+          }
+
+          // If API returns flat structure
+          return {
+            title_ar: data.title_ar || "",
+            title_en: data.title_en || "",
+            content_ar: data.content_ar || "",
+            content_en: data.content_en || "",
+          };
+        };
+
         setPages((prev) =>
           prev.map((page) => {
-            if (page.slug === "about-us" && aboutUs?.success && aboutUs?.data) {
+            if (page.slug === "about-us" && (aboutUs?.success || aboutUs?.status === "success") && aboutUs?.data) {
+              const trans = getTranslationData(aboutUs.data);
               return {
                 ...page,
-                title_ar: aboutUs.data.title_ar || "",
-                title_en: aboutUs.data.title_en || "",
-                hasContent: !!(aboutUs.data.content_ar || aboutUs.data.content_en),
+                title_ar: trans.title_ar,
+                title_en: trans.title_en,
+                hasContent: !!(trans.content_ar || trans.content_en),
               };
             }
-            if (page.slug === "terms-and-conditions" && terms?.success && terms?.data) {
+            if (page.slug === "terms-and-conditions" && (terms?.success || terms?.status === "success") && terms?.data) {
+              const trans = getTranslationData(terms.data);
               return {
                 ...page,
-                title_ar: terms.data.title_ar || "",
-                title_en: terms.data.title_en || "",
-                hasContent: !!(terms.data.content_ar || terms.data.content_en),
+                title_ar: trans.title_ar,
+                title_en: trans.title_en,
+                hasContent: !!(trans.content_ar || trans.content_en),
               };
             }
             return page;

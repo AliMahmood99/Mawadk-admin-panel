@@ -60,7 +60,8 @@ export default function GeneralSettingsPage() {
     try {
       setLoading(true);
       const response = await SettingsService.getSettings();
-      if (response.success && response.data) {
+      // API returns { status: "success", data: {...} } not { success: true, data: {...} }
+      if ((response.success || response.status === "success") && response.data) {
         const data = response.data;
         const newData = {
           phone: data.phone || "",
