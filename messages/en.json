@@ -1,5 +1,6 @@
 {
   "common": {
+    "home": "Home",
     "search": "Search",
     "filter": "Filter",
     "actions": "Actions",
@@ -950,7 +951,8 @@
     "saveError": "Error saving settings",
     "fetchError": "Error loading settings",
     "invalidFileType": "Invalid file type",
-    "fileTooLarge": "File too large"
+    "fileTooLarge": "File too large",
+    "noLogo": "No logo uploaded"
   },
   "faqs": {
     "title": "FAQs",

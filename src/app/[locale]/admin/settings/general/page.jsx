@@ -18,6 +18,8 @@ import {
   Loader2,
   ArrowRight,
   ArrowLeft,
+  Edit,
+  X,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import SettingsService from "@/lib/services/settings.service";
@@ -31,11 +33,19 @@ export default function GeneralSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [logoPreview, setLogoPreview] = useState(null);
+  const [originalLogo, setOriginalLogo] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
+    phone: "",
+    whatsapp: "",
+    fee_percent: "",
+  });
+
+  const [originalData, setOriginalData] = useState({
     phone: "",
     whatsapp: "",
     fee_percent: "",
@@ -52,13 +62,16 @@ export default function GeneralSettingsPage() {
       const response = await SettingsService.getSettings();
       if (response.success && response.data) {
         const data = response.data;
-        setFormData({
+        const newData = {
           phone: data.phone || "",
           whatsapp: data.whatsapp || "",
           fee_percent: data.fee_percent || "",
-        });
+        };
+        setFormData(newData);
+        setOriginalData(newData);
         if (data.logo) {
           setLogoPreview(data.logo);
+          setOriginalLogo(data.logo);
         }
       }
     } catch (error) {
@@ -99,6 +112,17 @@ export default function GeneralSettingsPage() {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setFormData(originalData);
+    setLogoPreview(originalLogo);
+    setLogoFile(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -118,7 +142,10 @@ export default function GeneralSettingsPage() {
 
       if (response.success) {
         toast.success(t("saveSuccess") || "Settings saved successfully");
-        setLogoFile(null); // Clear the file after successful upload
+        setOriginalData(formData);
+        setOriginalLogo(logoPreview);
+        setLogoFile(null);
+        setIsEditing(false);
       } else {
         toast.error(response.message || t("saveError") || "Failed to save settings");
       }
@@ -156,19 +183,169 @@ export default function GeneralSettingsPage() {
       </div>
 
       {/* Page Header */}
-      <div className="flex flex-col gap-1 mb-6">
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Settings className="w-6 h-6 text-primary" />
-          </div>
-          {t("generalSettings")}
-        </h1>
-        <p className="text-muted-foreground">{t("generalSettingsDesc")}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Settings className="w-6 h-6 text-primary" />
+            </div>
+            {t("generalSettings")}
+          </h1>
+          <p className="text-muted-foreground">{t("generalSettingsDesc")}</p>
+        </div>
+        {!isEditing && (
+          <Button onClick={handleEdit} className="gap-2">
+            <Edit className="w-4 h-4" />
+            {tCommon("edit")}
+          </Button>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit}>
+      {isEditing ? (
+        /* Edit Mode */
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Logo Upload Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-primary" />
+                  {t("logo")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center gap-4">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-40 h-40 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all overflow-hidden"
+                  >
+                    {logoPreview ? (
+                      <img
+                        src={logoPreview}
+                        alt="Logo"
+                        className="w-full h-full object-contain p-2"
+                      />
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">{t("uploadLogo")}</span>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                  <p className="text-xs text-muted-foreground text-center">
+                    {t("logoHint") || "PNG, JPG, WEBP - Max 2MB"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Information Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-primary" />
+                  {t("contactInfo")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Phone */}
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    {t("phone")}
+                  </Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="+974 1234 5678"
+                    dir="ltr"
+                  />
+                </div>
+
+                {/* WhatsApp */}
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp" className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                    {t("whatsapp")}
+                  </Label>
+                  <Input
+                    id="whatsapp"
+                    name="whatsapp"
+                    type="tel"
+                    value={formData.whatsapp}
+                    onChange={handleInputChange}
+                    placeholder="+974 1234 5678"
+                    dir="ltr"
+                  />
+                </div>
+
+                {/* Fee Percent */}
+                <div className="space-y-2">
+                  <Label htmlFor="fee_percent" className="flex items-center gap-2">
+                    <Percent className="w-4 h-4 text-muted-foreground" />
+                    {t("feePercent")}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="fee_percent"
+                      name="fee_percent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formData.fee_percent}
+                      onChange={handleInputChange}
+                      placeholder="10"
+                      className="pe-10"
+                      dir="ltr"
+                    />
+                    <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      %
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("feePercentHint") || "Platform fee percentage for bookings"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 mt-6">
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={saving}>
+              <X className="w-4 h-4 me-2" />
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin me-2" />
+                  {t("saving") || "Saving..."}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 me-2" />
+                  {t("saveSettings")}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        /* View Mode */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Logo Upload Section */}
+          {/* Logo Display */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -178,10 +355,7 @@ export default function GeneralSettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center gap-4">
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-40 h-40 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all overflow-hidden"
-                >
+                <div className="w-40 h-40 border-2 border-border rounded-xl flex flex-col items-center justify-center overflow-hidden bg-muted/30">
                   {logoPreview ? (
                     <img
                       src={logoPreview}
@@ -190,39 +364,18 @@ export default function GeneralSettingsPage() {
                     />
                   ) : (
                     <>
-                      <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                      <span className="text-sm text-muted-foreground">{t("uploadLogo")}</span>
+                      <ImageIcon className="w-12 h-12 text-muted-foreground mb-2" />
+                      <span className="text-sm text-muted-foreground">
+                        {t("noLogo") || "No logo uploaded"}
+                      </span>
                     </>
                   )}
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                  onChange={handleLogoChange}
-                  className="hidden"
-                />
-                <p className="text-xs text-muted-foreground text-center">
-                  {t("logoHint") || "PNG, JPG, WEBP - Max 2MB"}
-                </p>
-                {logoFile && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setLogoFile(null);
-                      setLogoPreview(null);
-                    }}
-                  >
-                    {t("removeLogo") || "Remove"}
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Contact Information Section */}
+          {/* Contact Information Display */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -232,88 +385,41 @@ export default function GeneralSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
-                  {t("phone")}
-                </Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="+974 1234 5678"
-                  dir="ltr"
-                />
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Phone className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t("phone")}</span>
+                </div>
+                <span className="text-sm font-mono" dir="ltr">
+                  {formData.phone || "-"}
+                </span>
               </div>
 
               {/* WhatsApp */}
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp" className="flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                  {t("whatsapp")}
-                </Label>
-                <Input
-                  id="whatsapp"
-                  name="whatsapp"
-                  type="tel"
-                  value={formData.whatsapp}
-                  onChange={handleInputChange}
-                  placeholder="+974 1234 5678"
-                  dir="ltr"
-                />
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t("whatsapp")}</span>
+                </div>
+                <span className="text-sm font-mono" dir="ltr">
+                  {formData.whatsapp || "-"}
+                </span>
               </div>
 
               {/* Fee Percent */}
-              <div className="space-y-2">
-                <Label htmlFor="fee_percent" className="flex items-center gap-2">
-                  <Percent className="w-4 h-4 text-muted-foreground" />
-                  {t("feePercent")}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="fee_percent"
-                    name="fee_percent"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={formData.fee_percent}
-                    onChange={handleInputChange}
-                    placeholder="10"
-                    className="pe-10"
-                    dir="ltr"
-                  />
-                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    %
-                  </span>
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Percent className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t("feePercent")}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("feePercentHint") || "Platform fee percentage for bookings"}
-                </p>
+                <span className="text-sm font-mono">
+                  {formData.fee_percent ? `${formData.fee_percent}%` : "-"}
+                </span>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Save Button */}
-        <div className="flex justify-end mt-6">
-          <Button type="submit" disabled={saving} className="min-w-[150px]">
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin me-2" />
-                {t("saving") || "Saving..."}
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 me-2" />
-                {t("saveSettings")}
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
+      )}
     </DashboardLayout>
   );
 }
