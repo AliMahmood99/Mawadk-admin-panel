@@ -44,22 +44,57 @@ export default function EditFaqPage() {
     is_active: true,
   });
 
+  // Helper to extract translations
+  const extractFaqData = (data) => {
+    if (!data) return null;
+
+    // If API returns translations array
+    if (data.translations && Array.isArray(data.translations)) {
+      const arTrans = data.translations.find(t => t.locale === "ar") || {};
+      const enTrans = data.translations.find(t => t.locale === "en") || {};
+      return {
+        question_ar: arTrans.title || arTrans.question || "",
+        question_en: enTrans.title || enTrans.question || "",
+        answer_ar: arTrans.description || arTrans.answer || "",
+        answer_en: enTrans.description || enTrans.answer || "",
+        order: data.sort || data.order || 1,
+        is_active: data.is_active !== undefined ? data.is_active : true,
+      };
+    }
+
+    // If API returns flat structure
+    return {
+      question_ar: data.title || data.question_ar || "",
+      question_en: data.title_en || data.question_en || data.title || "",
+      answer_ar: data.description || data.answer_ar || "",
+      answer_en: data.description_en || data.answer_en || "",
+      order: data.sort || data.order || 1,
+      is_active: data.is_active !== undefined ? data.is_active : true,
+    };
+  };
+
   // Fetch FAQ data
   useEffect(() => {
     const fetchFaq = async () => {
       try {
         setLoading(true);
         const response = await SettingsService.getFaqById(faqId);
-        if (response.success && response.data) {
-          const faq = response.data;
-          setFormData({
-            question_en: faq.question_en || "",
-            question_ar: faq.question_ar || "",
-            answer_en: faq.answer_en || "",
-            answer_ar: faq.answer_ar || "",
-            order: faq.order || 1,
-            is_active: faq.is_active === 1 || faq.is_active === true,
-          });
+        // API returns { status: "success" } not { success: true }
+        if ((response.success || response.status === "success") && response.data) {
+          const faqData = extractFaqData(response.data);
+          if (faqData) {
+            setFormData({
+              question_en: faqData.question_en,
+              question_ar: faqData.question_ar,
+              answer_en: faqData.answer_en,
+              answer_ar: faqData.answer_ar,
+              order: faqData.order,
+              is_active: faqData.is_active === 1 || faqData.is_active === true,
+            });
+          } else {
+            toast.error(t("faqNotFound") || "FAQ not found");
+            router.push(`/${locale}/admin/settings/faqs`);
+          }
         } else {
           toast.error(t("faqNotFound") || "FAQ not found");
           router.push(`/${locale}/admin/settings/faqs`);
@@ -129,7 +164,8 @@ export default function EditFaqPage() {
 
       const response = await SettingsService.updateFaq(faqId, dataToSend);
 
-      if (response.success) {
+      // API returns { status: "success" } not { success: true }
+      if (response.success || response.status === "success") {
         toast.success(t("updateSuccess") || "FAQ updated successfully");
         router.push(`/${locale}/admin/settings/faqs`);
       } else {

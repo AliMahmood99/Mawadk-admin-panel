@@ -59,20 +59,41 @@ export default function EditInfoPagePage() {
   const currentPage = pageInfo[slug] || pageInfo["about-us"];
   const Icon = currentPage.icon;
 
+  // Helper to extract translations
+  const extractPageData = (data) => {
+    if (!data) return { title_ar: "", title_en: "", content_ar: "", content_en: "" };
+
+    // If API returns translations array
+    if (data.translations && Array.isArray(data.translations)) {
+      const arTrans = data.translations.find(t => t.locale === "ar") || {};
+      const enTrans = data.translations.find(t => t.locale === "en") || {};
+      return {
+        title_ar: arTrans.title || "",
+        title_en: enTrans.title || "",
+        content_ar: arTrans.description || arTrans.content || "",
+        content_en: enTrans.description || enTrans.content || "",
+      };
+    }
+
+    // If API returns flat structure
+    return {
+      title_ar: data.title_ar || "",
+      title_en: data.title_en || "",
+      content_ar: data.content_ar || "",
+      content_en: data.content_en || "",
+    };
+  };
+
   // Fetch page data
   useEffect(() => {
     const fetchPage = async () => {
       try {
         setLoading(true);
         const response = await SettingsService.getInfoPage(slug);
-        if (response.success && response.data) {
-          const data = response.data;
-          setFormData({
-            title_en: data.title_en || "",
-            title_ar: data.title_ar || "",
-            content_en: data.content_en || "",
-            content_ar: data.content_ar || "",
-          });
+        // API returns { status: "success" } not { success: true }
+        if ((response.success || response.status === "success") && response.data) {
+          const pageData = extractPageData(response.data);
+          setFormData(pageData);
         }
       } catch (error) {
         console.error("Error fetching info page:", error);
@@ -129,7 +150,8 @@ export default function EditInfoPagePage() {
 
       const response = await SettingsService.updateInfoPage(slug, dataToSend);
 
-      if (response.success) {
+      // API returns { status: "success" } not { success: true }
+      if (response.success || response.status === "success") {
         toast.success(t("updateSuccess") || "Page updated successfully");
         router.push(`/${locale}/admin/settings/info-pages`);
       } else {

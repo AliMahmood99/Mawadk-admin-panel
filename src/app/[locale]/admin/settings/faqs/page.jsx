@@ -129,9 +129,43 @@ export default function FaqsListPage() {
     }
   };
 
-  const handleView = (faq) => {
-    setViewingFaq(faq);
-    setViewDialogOpen(true);
+  const handleView = async (faq) => {
+    try {
+      // Fetch full FAQ data including answer
+      const response = await SettingsService.getFaqById(faq.id);
+      if (response.success || response.status === "success") {
+        const data = response.data;
+
+        // Extract translations if present
+        let fullFaq;
+        if (data.translations && Array.isArray(data.translations)) {
+          const arTrans = data.translations.find(t => t.locale === "ar") || {};
+          const enTrans = data.translations.find(t => t.locale === "en") || {};
+          fullFaq = {
+            id: data.id,
+            question_ar: arTrans.title || arTrans.question || "",
+            question_en: enTrans.title || enTrans.question || "",
+            answer_ar: arTrans.description || arTrans.answer || "",
+            answer_en: enTrans.description || enTrans.answer || "",
+          };
+        } else {
+          fullFaq = {
+            id: data.id,
+            question_ar: data.title || data.question_ar || "",
+            question_en: data.title_en || data.question_en || data.title || "",
+            answer_ar: data.description || data.answer_ar || "",
+            answer_en: data.description_en || data.answer_en || "",
+          };
+        }
+        setViewingFaq(fullFaq);
+        setViewDialogOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching FAQ:", error);
+      // Fallback to list data
+      setViewingFaq(faq);
+      setViewDialogOpen(true);
+    }
   };
 
   const ArrowIcon = isRTL ? ArrowLeft : ArrowRight;
