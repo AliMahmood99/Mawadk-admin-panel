@@ -65,15 +65,34 @@ export default function AdminsPage() {
 
       if (adminsResult.success) {
         const adminsList = adminsResult.data || [];
-        setAdmins(adminsList);
+
+        // Fetch permissions count for each admin
+        const adminsWithPermissions = await Promise.all(
+          adminsList.map(async (admin) => {
+            try {
+              const detailResult = await AdminsService.getAdminById(admin.id);
+              if (detailResult.success && detailResult.data?.permissions) {
+                return {
+                  ...admin,
+                  permissions_count: detailResult.data.permissions.length,
+                };
+              }
+            } catch (e) {
+              console.error("Error fetching admin details:", e);
+            }
+            return admin;
+          })
+        );
+
+        setAdmins(adminsWithPermissions);
 
         // Calculate stats
-        const activeCount = adminsList.filter(a => a.status).length;
-        const inactiveCount = adminsList.filter(a => !a.status).length;
+        const activeCount = adminsWithPermissions.filter(a => a.status).length;
+        const inactiveCount = adminsWithPermissions.filter(a => !a.status).length;
 
         setStats(prev => ({
           ...prev,
-          total: adminsList.length,
+          total: adminsWithPermissions.length,
           active: activeCount,
           inactive: inactiveCount,
         }));
@@ -427,13 +446,13 @@ export default function AdminsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right w-16">#</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("admin")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("contact")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("permissions")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("dateCreated")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("status")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-center w-20">{t("actions")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start w-16">#</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("admin")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("contact")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("permissions")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("dateCreated")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("status")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start w-20">{t("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -536,27 +555,27 @@ export default function AdminsPage() {
 
                             {openDropdown === admin.id && (
                               <div
-                                className="absolute left-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
+                                className="absolute end-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {viewMode === "active" ? (
                                   <>
                                     <button
-                                      className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                      className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                       onClick={() => handleViewDetails(admin.id)}
                                     >
                                       <Eye className="h-4 w-4 text-slate-400" />
                                       {t("viewDetails")}
                                     </button>
                                     <button
-                                      className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                      className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                       onClick={() => handleEditAdmin(admin)}
                                     >
                                       <Edit3 className="h-4 w-4 text-slate-400" />
                                       {t("editAdmin")}
                                     </button>
                                     <button
-                                      className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                      className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                       onClick={() => handleToggleStatus(admin.id)}
                                     >
                                       {admin.status ? (
@@ -573,7 +592,7 @@ export default function AdminsPage() {
                                     </button>
                                     <div className="border-t border-slate-100 my-1" />
                                     <button
-                                      className="w-full px-3 py-2 text-right text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                                      className="w-full px-3 py-2 text-start text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
                                       onClick={() => handleDeleteClick(admin)}
                                     >
                                       <Trash2 className="h-4 w-4" />
@@ -582,7 +601,7 @@ export default function AdminsPage() {
                                   </>
                                 ) : (
                                   <button
-                                    className="w-full px-3 py-2 text-right text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+                                    className="w-full px-3 py-2 text-start text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
                                     onClick={() => handleRestoreClick(admin)}
                                   >
                                     <RefreshCw className="h-4 w-4" />

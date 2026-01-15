@@ -432,18 +432,18 @@ export default function UsersPage() {
 
                             {openDropdown === customer.id && (
                               <div
-                                className="absolute left-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
+                                className="absolute end-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <button
-                                  className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                   onClick={() => handleViewDetails(customer.id)}
                                 >
                                   <Eye className="h-4 w-4 text-slate-400" />
                                   {t("viewDetails")}
                                 </button>
                                 <button
-                                  className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                   onClick={() => handleToggleStatus(customer.id)}
                                 >
                                   {customer.status ? (
@@ -460,7 +460,7 @@ export default function UsersPage() {
                                 </button>
                                 <div className="border-t border-slate-100 my-1" />
                                 <button
-                                  className="w-full px-3 py-2 text-right text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                                  className="w-full px-3 py-2 text-start text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
                                   onClick={() => handleDeleteClick(customer)}
                                 >
                                   <Trash2 className="h-4 w-4" />

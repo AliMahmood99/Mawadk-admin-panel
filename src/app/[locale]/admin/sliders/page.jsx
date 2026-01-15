@@ -1,82 +1,179 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  MoreVertical,
-  Image as ImageIcon,
-  MousePointerClick,
-  TrendingUp,
-  CheckCircle,
-  XCircle,
-  ExternalLink,
-  Link2,
-  GripVertical
+  Image as ImageIcon, Plus, Search, MoreVertical, Eye, Edit3,
+  Trash2, Building2, Stethoscope, User, ExternalLink, Calendar,
+  Loader2, Link2, CheckCircle, XCircle, RefreshCw, ImageOff
 } from "lucide-react";
-import { sliders } from "@/data/mock/sliders";
+import toast from "react-hot-toast";
+import SlidersService from "@/lib/services/sliders.service";
+import SliderFormModal from "@/components/sliders/SliderFormModal";
+import SliderViewModal from "@/components/sliders/SliderViewModal";
+import SliderDeleteModal from "@/components/sliders/SliderDeleteModal";
+import { usePermissions, PERMISSIONS } from "@/hooks/usePermissions";
 
 export default function SlidersPage() {
   const t = useTranslations("sliders");
-  const tCommon = useTranslations("common");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+
+  // Permissions
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission(PERMISSIONS.SLIDERS_CREATE);
+  const canEdit = hasPermission(PERMISSIONS.SLIDERS_EDIT);
+  const canDelete = hasPermission(PERMISSIONS.SLIDERS_DELETE);
+
+  // State
+  const [sliders, setSliders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [openDropdown, setOpenDropdown] = useState(null);
+  const dropdownRef = useRef(null);
   const itemsPerPage = 10;
 
-  // Filter sliders based on search
-  const filteredSliders = sliders.filter(
-    (slider) =>
-      slider.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      slider.title_ar.includes(searchQuery) ||
-      slider.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Modals
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedSlider, setSelectedSlider] = useState(null);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredSliders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedSliders = filteredSliders.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  // Fetch sliders
+  const fetchSliders = useCallback(async (page = 1, search = "") => {
+    setIsLoading(true);
+    try {
+      const params = {
+        page,
+        per_page: itemsPerPage,
+      };
+      if (search) params.search = search;
 
-  // Calculate analytics
-  const totalSliders = sliders.length;
-  const activeSliders = sliders.filter(s => s.status === "active").length;
-  const totalViews = sliders.reduce((sum, s) => sum + s.views, 0);
-  const totalClicks = sliders.reduce((sum, s) => sum + s.clicks, 0);
-  const avgCTR = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : 0;
+      const result = await SlidersService.getSliders(params);
+
+      if (result.success) {
+        setSliders(result.data);
+        setMeta(result.meta);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error(tc("errorFetchingData"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tc]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSliders(currentPage, searchQuery);
+  }, [currentPage]);
+
+  // Search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      fetchSliders(1, searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Handle status toggle
+  const handleToggleStatus = async (slider) => {
+    setOpenDropdown(null);
+    const loadingToast = toast.loading(tc("loading"));
+    try {
+      const result = await SlidersService.toggleSliderStatus(slider.id);
+      toast.dismiss(loadingToast);
+      if (result.success) {
+        toast.success(tc("statusUpdated"));
+        fetchSliders(currentPage, searchQuery);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error(tc("errorUpdatingStatus"));
+    }
+  };
+
+  // Handle add new
+  const handleAdd = () => {
+    setSelectedSlider(null);
+    setFormModalOpen(true);
+  };
+
+  // Handle edit
+  const handleEdit = (slider) => {
+    setOpenDropdown(null);
+    setSelectedSlider(slider);
+    setFormModalOpen(true);
+  };
+
+  // Handle view
+  const handleView = (slider) => {
+    setOpenDropdown(null);
+    setSelectedSlider(slider);
+    setViewModalOpen(true);
+  };
+
+  // Handle delete click
+  const handleDeleteClick = (slider) => {
+    setOpenDropdown(null);
+    setSelectedSlider(slider);
+    setDeleteModalOpen(true);
+  };
 
   const toggleDropdown = (sliderId) => {
     setOpenDropdown(openDropdown === sliderId ? null : sliderId);
   };
 
-  const getLinkTypeLabel = (type) => {
-    switch(type) {
-      case "internal": return t("internal");
-      case "external": return t("external");
-      default: return type;
+  // Get type icon component
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case "Hospital": return <Building2 className="h-3.5 w-3.5" />;
+      case "Clinic": return <Stethoscope className="h-3.5 w-3.5" />;
+      case "Doctor": return <User className="h-3.5 w-3.5" />;
+      case "URL":
+      case "ULR": return <ExternalLink className="h-3.5 w-3.5" />;
+      default: return <ImageIcon className="h-3.5 w-3.5" />;
     }
   };
 
-  const getLinkToLabel = (linkTo) => {
-    switch(linkTo) {
-      case "specialties": return t("specialties");
-      case "hospitals": return t("hospitals");
-      case "doctors": return t("doctors");
-      case "url": return t("url");
-      default: return linkTo;
+  // Get type badge style
+  const getTypeBadgeStyle = (type) => {
+    switch (type) {
+      case "Hospital": return "bg-blue-50 text-blue-700 border-blue-200";
+      case "Clinic": return "bg-purple-50 text-purple-700 border-purple-200";
+      case "Doctor": return "bg-teal-50 text-teal-700 border-teal-200";
+      case "URL":
+      case "ULR": return "bg-orange-50 text-orange-700 border-orange-200";
+      default: return "bg-slate-50 text-slate-700 border-slate-200";
     }
   };
+
+  // Calculate stats
+  const totalSliders = meta.total || 0;
+  const activeSliders = sliders.filter(s => s.status).length;
 
   return (
     <DashboardLayout requiredUserType="admin">
@@ -84,22 +181,22 @@ export default function SlidersPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="text-slate-600 mt-1">{t("subtitle")}</p>
+          <p className="text-slate-500 mt-1">{t("subtitle")}</p>
         </div>
-        <Button className="gap-2 h-10 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" />
-          {t("addSlider")}
-        </Button>
+{canCreate && (
+          <Button className="gap-2 h-10" onClick={handleAdd}>
+            <Plus className="w-4 h-4" />
+            {t("addSlider")}
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <Card className="border-slate-200">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card className="border-slate-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">
-                {t("totalSliders")}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">{t("totalSliders")}</CardTitle>
               <div className="h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center">
                 <ImageIcon className="h-5 w-5 text-indigo-600" />
               </div>
@@ -107,18 +204,16 @@ export default function SlidersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-slate-900">
-              {totalSliders.toLocaleString()}
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : totalSliders}
             </div>
-            <p className="text-xs text-slate-500 mt-1">All sliders</p>
+            <p className="text-xs text-slate-500 mt-1">{t("allSliders")}</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">
-                {t("activeSliders")}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">{t("activeSliders")}</CardTitle>
               <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
               </div>
@@ -126,233 +221,279 @@ export default function SlidersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-slate-900">
-              {activeSliders.toLocaleString()}
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : activeSliders}
             </div>
             <p className="text-xs text-emerald-600 mt-1">
-              {Math.round((activeSliders / totalSliders) * 100)}% of total
+              {totalSliders > 0 ? Math.round((activeSliders / totalSliders) * 100) : 0}% {t("ofTotal")}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">
-                {t("totalViews")}
-              </CardTitle>
-              <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Eye className="h-5 w-5 text-blue-600" />
+              <CardTitle className="text-sm font-medium text-slate-600">{t("inactiveSliders")}</CardTitle>
+              <div className="h-10 w-10 bg-rose-50 rounded-lg flex items-center justify-center">
+                <XCircle className="h-5 w-5 text-rose-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-slate-900">
-              {totalViews.toLocaleString()}
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : totalSliders - activeSliders}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Total impressions</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">
-                {t("totalClicks")}
-              </CardTitle>
-              <div className="h-10 w-10 bg-pink-50 rounded-lg flex items-center justify-center">
-                <MousePointerClick className="h-5 w-5 text-pink-600" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900">
-              {totalClicks.toLocaleString()}
-            </div>
-            <p className="text-xs text-pink-600 mt-1">
-              {avgCTR}% average CTR
+            <p className="text-xs text-rose-600 mt-1">
+              {totalSliders > 0 ? Math.round(((totalSliders - activeSliders) / totalSliders) * 100) : 0}% {t("ofTotal")}
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Main Card */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-200 shadow-sm">
         <CardContent className="p-0">
-          <div className="px-6 py-4 border-b border-slate-200">
+          {/* Table Header */}
+          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="font-semibold text-slate-900">
-                {tCommon("all")} ({filteredSliders.length})
-              </h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder={tCommon("search")}
-                  className="pl-10 w-64"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                />
+              <div className="flex items-center gap-3">
+                <h3 className="font-semibold text-slate-900">{t("allSliders")}</h3>
+                <Badge variant="secondary" className="bg-slate-200 text-slate-700">
+                  {meta.total || 0}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchSliders(currentPage, searchQuery)}
+                  disabled={isLoading}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder={t("searchPlaceholder")}
+                    className="pr-10 w-72 h-10 bg-white"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Table */}
           <div className="overflow-visible">
-            {paginatedSliders.length === 0 ? (
-              <div className="text-center py-12">
-                <ImageIcon className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">{t("noSliders")}</p>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
+                  <p className="text-slate-500">{tc("loading")}</p>
+                </div>
+              </div>
+            ) : sliders.length === 0 ? (
+              <div className="text-center py-16">
+                <ImageOff className="h-16 w-16 text-slate-200 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">{t("noSliders")}</h3>
+                <p className="text-slate-500">{t("noSlidersHint")}</p>
               </div>
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left w-10">
-                      <GripVertical className="h-4 w-4 text-slate-400" />
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {t("preview")}
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {t("titleAndSubtitle")}
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {t("type")}
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {t("linkTo")}
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {t("analytics")}
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {tCommon("status")}
-                    </th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">
-                      {tCommon("actions")}
-                    </th>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-14">#</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-24">{t("image")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start">{t("titleColumn")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center">{t("type")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start">{t("link")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-16">{t("sort")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start">{t("dateRange")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center">{tc("status")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-16">{tc("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedSliders.map((slider, index) => (
+                  {sliders.map((slider, index) => (
                     <tr
                       key={slider.id}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-all"
+                      className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                     >
-                      <td className="py-4 px-6">
-                        <div className="cursor-move">
-                          <GripVertical className="h-4 w-4 text-slate-400" />
+                      {/* # */}
+                      <td className="py-4 px-4 text-center">
+                        <span className="text-sm text-slate-500 font-medium">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </span>
+                      </td>
+                      {/* Image */}
+                      <td className="py-4 px-4">
+                        <div className="w-20 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 mx-auto">
+                          {slider.image ? (
+                            <img
+                              src={slider.image}
+                              alt={slider.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="h-5 w-5 text-slate-400" />
+                            </div>
+                          )}
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="h-16 w-28 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center border-2 border-slate-200">
-                          <ImageIcon className="h-6 w-6 text-primary/60" />
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="max-w-xs">
-                          <div className="font-medium text-slate-900 truncate">
+                      {/* Title */}
+                      <td className="py-4 px-4 text-start">
+                        <button
+                          onClick={() => handleView(slider)}
+                          className="hover:opacity-80 transition-opacity text-start"
+                        >
+                          <div className="font-medium text-slate-900 line-clamp-1 max-w-[180px]">
                             {slider.title}
                           </div>
-                          <div className="text-xs text-slate-500 truncate mt-1">
-                            {slider.title_ar}
-                          </div>
-                          <div className="text-xs text-slate-400 truncate mt-1">
-                            {slider.subtitle}
-                          </div>
-                        </div>
+                        </button>
                       </td>
-                      <td className="py-4 px-6">
-                        <Badge
-                          variant="outline"
-                          className={
-                            slider.type === "internal"
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : "bg-purple-50 text-purple-700 border-purple-200"
-                          }
-                        >
-                          {slider.type === "internal" ? (
-                            <Link2 className="h-3 w-3 mr-1" />
-                          ) : (
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                          )}
-                          {getLinkTypeLabel(slider.type)}
+                      {/* Type */}
+                      <td className="py-4 px-4 text-center">
+                        <Badge className={`gap-1 border ${getTypeBadgeStyle(slider.type)}`}>
+                          {getTypeIcon(slider.type)}
+                          {t(`type${slider.type}`)}
                         </Badge>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="text-sm text-slate-700">
-                          {getLinkToLabel(slider.link_to)}
-                        </div>
-                        <div className="text-xs text-slate-400 truncate max-w-xs mt-1">
-                          {slider.link_value}
-                        </div>
+                      {/* Link */}
+                      <td className="py-4 px-4 text-start">
+                        {slider.type === "None" ? (
+                          <span className="text-slate-400 text-sm">-</span>
+                        ) : (slider.type === "URL" || slider.type === "ULR") ? (
+                          <a
+                            href={slider.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                            {t("externalLink")}
+                          </a>
+                        ) : slider.typeModel ? (
+                          <div className="flex items-center gap-2">
+                            {slider.typeModel.image && (
+                              <img
+                                src={slider.typeModel.image}
+                                alt=""
+                                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                              />
+                            )}
+                            <span className="text-sm text-slate-700 line-clamp-1 max-w-[100px]">
+                              {slider.typeModel.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">-</span>
+                        )}
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs">
-                            <Eye className="h-3 w-3 text-slate-400" />
-                            <span className="text-slate-600">
-                              {slider.views.toLocaleString()} {t("views")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <MousePointerClick className="h-3 w-3 text-slate-400" />
-                            <span className="text-slate-600">
-                              {slider.clicks.toLocaleString()} {t("clicks")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <TrendingUp className="h-3 w-3 text-emerald-500" />
-                            <span className="text-emerald-600 font-medium">
-                              {slider.ctr}% {t("ctr")}
-                            </span>
-                          </div>
-                        </div>
+                      {/* Sort */}
+                      <td className="py-4 px-4 text-center">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                          {slider.sort}
+                        </Badge>
                       </td>
-                      <td className="py-4 px-6">
-                        {slider.status === "active" ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 font-medium">
-                            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                            {tCommon("active")}
+                      {/* Date Range */}
+                      <td className="py-4 px-4 text-start">
+                        {slider.start_at || slider.end_at ? (
+                          <div className="text-sm text-slate-600">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                              <span>{slider.start_at || "-"}</span>
+                            </div>
+                            <div className="text-xs text-slate-400 mt-0.5 ps-5">
+                              {t("until")} {slider.end_at || "-"}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">-</span>
+                        )}
+                      </td>
+                      {/* Status */}
+                      <td className="py-4 px-4 text-center">
+                        {slider.status ? (
+                          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            {tc("active")}
                           </Badge>
                         ) : (
-                          <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200 font-medium">
-                            <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                            {tCommon("inactive")}
+                          <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50 border border-rose-200 gap-1">
+                            <XCircle className="h-3 w-3" />
+                            {tc("inactive")}
                           </Badge>
                         )}
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-2 relative">
-                          <div className="relative">
+                      {/* Actions */}
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex justify-center">
+                          <div className="relative" ref={openDropdown === slider.id ? dropdownRef : null}>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 hover:bg-slate-100"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleDropdown(slider.id);
                               }}
                             >
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4 text-slate-500" />
                             </Button>
 
                             {openDropdown === slider.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <Eye className="h-4 w-4" />
-                                  {tCommon("view")}
+                              <div
+                                className="absolute end-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  onClick={() => handleView(slider)}
+                                >
+                                  <Eye className="h-4 w-4 text-slate-400" />
+                                  {tc("view")}
                                 </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <Edit className="h-4 w-4" />
-                                  {tCommon("edit")}
-                                </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 flex items-center gap-2 border-t border-slate-100">
-                                  <Trash2 className="h-4 w-4" />
-                                  {tCommon("delete")}
-                                </button>
+                                {canEdit && (
+                                  <button
+                                    className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                    onClick={() => handleEdit(slider)}
+                                  >
+                                    <Edit3 className="h-4 w-4 text-slate-400" />
+                                    {tc("edit")}
+                                  </button>
+                                )}
+                                {canEdit && (
+                                  <button
+                                    className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                    onClick={() => handleToggleStatus(slider)}
+                                  >
+                                    {slider.status ? (
+                                      <>
+                                        <XCircle className="h-4 w-4 text-amber-500" />
+                                        {t("deactivate")}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                        {t("activate")}
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <>
+                                    <div className="border-t border-slate-100 my-1" />
+                                    <button
+                                      className="w-full px-3 py-2 text-start text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 transition-colors"
+                                      onClick={() => handleDeleteClick(slider)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      {tc("delete")}
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -366,31 +507,30 @@ export default function SlidersPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {meta.last_page > 1 && (
             <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-slate-200 gap-4">
-              <div className="text-sm text-slate-600">
-                Showing {startIndex + 1} to{" "}
-                {Math.min(startIndex + itemsPerPage, filteredSliders.length)} of{" "}
-                {filteredSliders.length.toLocaleString()}
+              <div className="text-sm text-slate-500">
+                {t("page")} {meta.current_page} {t("of")} {meta.last_page} ({meta.total} {t("slider")})
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || isLoading}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="h-9"
                 >
-                  {tCommon("previous")}
+                  {tc("previous")}
                 </Button>
 
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                {Array.from({ length: Math.min(5, meta.last_page) }, (_, i) => {
                   let pageNum;
-                  if (totalPages <= 5) {
+                  if (meta.last_page <= 5) {
                     pageNum = i + 1;
                   } else if (currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
+                  } else if (currentPage >= meta.last_page - 2) {
+                    pageNum = meta.last_page - 4 + i;
                   } else {
                     pageNum = currentPage - 2 + i;
                   }
@@ -400,11 +540,12 @@ export default function SlidersPage() {
                       key={pageNum}
                       variant="outline"
                       size="sm"
-                      className={
+                      disabled={isLoading}
+                      className={`h-9 w-9 p-0 ${
                         currentPage === pageNum
-                          ? "bg-pink-50 text-pink-600 border-pink-200"
+                          ? "bg-primary text-white border-primary hover:bg-primary/90 hover:text-white"
                           : ""
-                      }
+                      }`}
                       onClick={() => setCurrentPage(pageNum)}
                     >
                       {pageNum}
@@ -412,15 +553,17 @@ export default function SlidersPage() {
                   );
                 })}
 
-                {totalPages > 5 && currentPage < totalPages - 2 && (
+                {meta.last_page > 5 && currentPage < meta.last_page - 2 && (
                   <>
-                    <span className="text-slate-400">...</span>
+                    <span className="text-slate-400 px-1">...</span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={isLoading}
+                      className="h-9 w-9 p-0"
+                      onClick={() => setCurrentPage(meta.last_page)}
                     >
-                      {totalPages}
+                      {meta.last_page}
                     </Button>
                   </>
                 )}
@@ -428,18 +571,39 @@ export default function SlidersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
+                  disabled={currentPage === meta.last_page || isLoading}
+                  onClick={() => setCurrentPage((p) => Math.min(meta.last_page, p + 1))}
+                  className="h-9"
                 >
-                  {tCommon("next")}
+                  {tc("next")}
                 </Button>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modals */}
+      <SliderFormModal
+        open={formModalOpen}
+        onOpenChange={setFormModalOpen}
+        slider={selectedSlider}
+        onSuccess={() => fetchSliders(currentPage, searchQuery)}
+      />
+
+      <SliderViewModal
+        open={viewModalOpen}
+        onOpenChange={setViewModalOpen}
+        slider={selectedSlider}
+        onEdit={handleEdit}
+      />
+
+      <SliderDeleteModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        slider={selectedSlider}
+        onSuccess={() => fetchSliders(currentPage, searchQuery)}
+      />
     </DashboardLayout>
   );
 }

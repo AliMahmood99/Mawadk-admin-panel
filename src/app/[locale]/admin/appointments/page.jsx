@@ -1,115 +1,184 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { usePermissions, PERMISSIONS } from "@/hooks/usePermissions";
+import BookingsService from "@/lib/services/bookings.service";
+import BookingViewModal from "@/components/modals/BookingViewModal";
+import BookingStatusModal from "@/components/modals/BookingStatusModal";
 import {
   Search,
-  Plus,
-  Edit,
-  Trash2,
   Eye,
   MoreVertical,
   Calendar,
   Clock,
   CheckCircle,
   XCircle,
-  DollarSign,
   User,
   Stethoscope,
   Building2,
   CalendarCheck,
   CalendarX,
   CalendarClock,
-  AlertCircle,
   Phone,
-  FileText
+  RefreshCw,
+  Loader2,
+  Activity,
+  UserCheck,
+  UserX,
+  CheckCircle2,
+  CreditCard,
+  Banknote,
 } from "lucide-react";
-import { appointments } from "@/data/mock/appointments";
+
+// Status icon mapping
+const StatusIcons = {
+  pending: Clock,
+  confirmed: CheckCircle,
+  approved: CheckCircle,
+  checkedin: UserCheck,
+  inprogress: Activity,
+  completed: CheckCircle2,
+  cancelled: XCircle,
+  noshow: UserX,
+  no_show: UserX,
+  rescheduled: RefreshCw,
+};
+
+// Payment method icons
+const PaymentIcons = {
+  cash: Banknote,
+  card: CreditCard,
+  online: CreditCard,
+};
 
 export default function AppointmentsPage() {
-  const t = useTranslations("common");
+  const t = useTranslations("bookings");
+  const tCommon = useTranslations("common");
+  const { locale } = useParams();
+  const router = useRouter();
+  const { hasPermission } = usePermissions();
+
+  // Permission checks
+  const canView = hasPermission(PERMISSIONS.BOOKINGS_VIEW);
+  const canEdit = hasPermission(PERMISSIONS.BOOKINGS_EDIT);
+
+  // State
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
+
+  // Modal state
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+
   const itemsPerPage = 10;
+  const dropdownRef = useRef(null);
 
-  // Filter appointments based on search and status
-  const filteredAppointments = appointments.filter((appointment) => {
-    const matchesSearch =
-      appointment.user_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.doctor_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.hospital_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.user_phone.includes(searchQuery);
+  // Fetch bookings
+  const fetchBookings = useCallback(async () => {
+    setLoading(true);
+    const params = {
+      page: currentPage,
+      per_page: itemsPerPage,
+    };
 
-    const matchesStatus = statusFilter === "all" || appointment.status === statusFilter;
+    if (searchQuery) {
+      params.search = searchQuery;
+    }
 
-    return matchesSearch && matchesStatus;
-  });
+    if (statusFilter !== "all") {
+      params.status = statusFilter;
+    }
 
-  // Pagination
-  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedAppointments = filteredAppointments.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+    const result = await BookingsService.getBookings(params);
 
-  // Calculate analytics
-  const totalAppointments = appointments.length;
-  const upcomingAppointments = appointments.filter(a => a.status === "upcoming").length;
-  const completedAppointments = appointments.filter(a => a.status === "completed").length;
-  const cancelledAppointments = appointments.filter(a => a.status === "cancelled").length;
-  const totalRevenue = appointments
-    .filter(a => a.payment_status === "paid")
-    .reduce((sum, a) => sum + a.consultation_fee, 0);
+    if (result.success) {
+      setBookings(result.data);
+      setMeta(result.meta);
+    }
 
-  const toggleDropdown = (appointmentId) => {
-    setOpenDropdown(openDropdown === appointmentId ? null : appointmentId);
+    setLoading(false);
+  }, [currentPage, searchQuery, statusFilter]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleDropdown = (e, bookingId) => {
+    e.stopPropagation();
+    setOpenDropdown(openDropdown === bookingId ? null : bookingId);
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case "upcoming":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "completed":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      case "cancelled":
-        return "bg-rose-100 text-rose-700 border-rose-200";
-      default:
-        return "bg-slate-100 text-slate-700 border-slate-200";
-    }
+  const handleViewBooking = (booking) => {
+    setOpenDropdown(null);
+    router.push(`/${locale}/admin/appointments/${booking.id}`);
+  };
+
+  const handleChangeStatus = (booking) => {
+    setSelectedBooking(booking);
+    setStatusModalOpen(true);
+    setOpenDropdown(null);
+  };
+
+  const handleStatusUpdated = () => {
+    fetchBookings();
+    setStatusModalOpen(false);
+    setSelectedBooking(null);
   };
 
   const getStatusIcon = (status) => {
-    switch(status) {
-      case "upcoming":
-        return <CalendarClock className="h-3.5 w-3.5 mr-1.5" />;
-      case "completed":
-        return <CalendarCheck className="h-3.5 w-3.5 mr-1.5" />;
-      case "cancelled":
-        return <CalendarX className="h-3.5 w-3.5 mr-1.5" />;
-      default:
-        return <Calendar className="h-3.5 w-3.5 mr-1.5" />;
-    }
+    const normalizedStatus = status?.toLowerCase()?.replace("_", "");
+    const Icon = StatusIcons[normalizedStatus] || StatusIcons[status?.toLowerCase()] || Calendar;
+    return <Icon className="h-3.5 w-3.5 me-1.5" />;
   };
 
-  const getPaymentStatusColor = (status) => {
-    switch(status) {
-      case "paid":
-        return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      case "pending":
-        return "bg-amber-100 text-amber-700 border-amber-200";
-      case "refunded":
-        return "bg-purple-100 text-purple-700 border-purple-200";
-      default:
-        return "bg-slate-100 text-slate-700 border-slate-200";
-    }
+  const getPaymentIcon = (method) => {
+    const Icon = PaymentIcons[method?.toLowerCase()] || CreditCard;
+    return <Icon className="h-3.5 w-3.5 me-1.5" />;
+  };
+
+  // Calculate stats from bookings
+  const stats = {
+    total: meta.total,
+    pending: bookings.filter((b) => b.status?.toLowerCase() === "pending").length,
+    completed: bookings.filter((b) => b.status?.toLowerCase() === "completed").length,
+    cancelled: bookings.filter((b) => b.status?.toLowerCase() === "cancelled").length,
+  };
+
+  // Get translated status
+  const getStatusLabel = (status) => {
+    if (!status) return "-";
+    const key = status.toLowerCase().replace("_", "");
+    return t(key) || BookingsService.capitalizeStatus(status);
+  };
+
+  // Get translated payment method
+  const getPaymentLabel = (method) => {
+    if (!method) return "-";
+    return t(method.toLowerCase()) || BookingsService.capitalizeStatus(method);
   };
 
   return (
@@ -117,12 +186,22 @@ export default function AppointmentsPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Appointments Management</h1>
-          <p className="text-slate-600 mt-1">Manage all appointment bookings</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {t("title")}
+          </h1>
+          <p className="text-slate-600 mt-1">
+            {t("subtitle")}
+          </p>
         </div>
-        <Button className="gap-2 h-10 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" />
-          Add Appointment
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchBookings}
+          disabled={loading}
+          className="gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          {tCommon("refresh")}
         </Button>
       </div>
 
@@ -131,31 +210,20 @@ export default function AppointmentsPage() {
         <Card className="border-slate-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Total Appointments</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">
+                {t("totalBookings")}
+              </CardTitle>
               <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
                 <Calendar className="h-5 w-5 text-blue-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{totalAppointments.toLocaleString()}</div>
-            <p className="text-xs text-slate-500 mt-1">All bookings</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Upcoming</CardTitle>
-              <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <CalendarClock className="h-5 w-5 text-blue-600" />
-              </div>
+            <div className="text-3xl font-bold text-slate-900">
+              {meta.total.toLocaleString()}
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{upcomingAppointments.toLocaleString()}</div>
-            <p className="text-xs text-blue-600 mt-1">
-              {Math.round((upcomingAppointments / totalAppointments) * 100)}% of total
+            <p className="text-xs text-slate-500 mt-1">
+              {t("allBookings")}
             </p>
           </CardContent>
         </Card>
@@ -163,16 +231,41 @@ export default function AppointmentsPage() {
         <Card className="border-slate-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Completed</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">
+                {t("pending")}
+              </CardTitle>
+              <div className="h-10 w-10 bg-amber-50 rounded-lg flex items-center justify-center">
+                <CalendarClock className="h-5 w-5 text-amber-600" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-slate-900">
+              {stats.pending}
+            </div>
+            <p className="text-xs text-amber-600 mt-1">
+              {t("awaitingApproval")}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-slate-600">
+                {t("completed")}
+              </CardTitle>
               <div className="h-10 w-10 bg-emerald-50 rounded-lg flex items-center justify-center">
                 <CalendarCheck className="h-5 w-5 text-emerald-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{completedAppointments.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-slate-900">
+              {stats.completed}
+            </div>
             <p className="text-xs text-emerald-600 mt-1">
-              {Math.round((completedAppointments / totalAppointments) * 100)}% completion rate
+              {t("successfulBookings")}
             </p>
           </CardContent>
         </Card>
@@ -180,212 +273,243 @@ export default function AppointmentsPage() {
         <Card className="border-slate-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-600">Total Revenue</CardTitle>
-              <div className="h-10 w-10 bg-green-50 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-600" />
+              <CardTitle className="text-sm font-medium text-slate-600">
+                {t("cancelled")}
+              </CardTitle>
+              <div className="h-10 w-10 bg-rose-50 rounded-lg flex items-center justify-center">
+                <CalendarX className="h-5 w-5 text-rose-600" />
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">QAR {totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-slate-500 mt-1">From paid appointments</p>
+            <div className="text-3xl font-bold text-slate-900">
+              {stats.cancelled}
+            </div>
+            <p className="text-xs text-rose-600 mt-1">
+              {t("cancelledBookings")}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Card */}
-      <Card className="border-slate-200">
-        <CardContent className="p-0">
-          <div className="px-6 py-4 border-b border-slate-200">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <h3 className="font-semibold text-slate-900">All Appointments ({filteredAppointments.length})</h3>
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                {/* Status Filter */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={statusFilter === "all" ? "default" : "outline"}
-                    size="sm"
+      {/* Tabs and Search */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        {/* Tabs Header */}
+        <div className="border-b border-slate-200">
+          <div className="flex items-center justify-between px-6">
+            <div className="flex items-center gap-0">
+              {[
+                { key: "all", label: tCommon("all"), icon: Calendar },
+                { key: "pending", label: t("pending"), icon: Clock },
+                { key: "confirmed", label: t("confirmed"), icon: CheckCircle },
+                { key: "completed", label: t("completed"), icon: CheckCircle2 },
+                { key: "cancelled", label: t("cancelled"), icon: XCircle },
+              ].map((tab) => {
+                const TabIcon = tab.icon;
+                const isActive = statusFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
                     onClick={() => {
-                      setStatusFilter("all");
+                      setStatusFilter(tab.key);
                       setCurrentPage(1);
                     }}
-                    className="h-9"
+                    className={`relative px-4 py-4 text-sm font-medium transition-colors flex items-center gap-2 ${
+                      isActive
+                        ? "text-primary"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
                   >
-                    All
-                  </Button>
-                  <Button
-                    variant={statusFilter === "upcoming" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setStatusFilter("upcoming");
-                      setCurrentPage(1);
-                    }}
-                    className="h-9"
-                  >
-                    Upcoming
-                  </Button>
-                  <Button
-                    variant={statusFilter === "completed" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setStatusFilter("completed");
-                      setCurrentPage(1);
-                    }}
-                    className="h-9"
-                  >
-                    Completed
-                  </Button>
-                  <Button
-                    variant={statusFilter === "cancelled" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setStatusFilter("cancelled");
-                      setCurrentPage(1);
-                    }}
-                    className="h-9"
-                  >
-                    Cancelled
-                  </Button>
-                </div>
-                <div className="relative flex-1 md:flex-initial">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    placeholder="Search"
-                    className="pl-10 w-full md:w-64"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                  />
-                </div>
-              </div>
+                    <TabIcon className="h-4 w-4" />
+                    {tab.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 start-0 end-0 h-0.5 bg-primary rounded-t-full" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative py-3">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder={tCommon("search")}
+                className="ps-10 w-64 h-9"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
+        </div>
 
-          {/* Table */}
-          <div className="overflow-visible">
-            {paginatedAppointments.length === 0 ? (
+        {/* Table */}
+        <div className="overflow-x-auto">
+            {loading ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto mb-4" />
+                <p className="text-slate-500">{tCommon("loading")}</p>
+              </div>
+            ) : bookings.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">No appointments found</p>
+                <p className="text-slate-500 font-medium">
+                  {t("noBookings")}
+                </p>
               </div>
             ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left w-16">#</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Patient</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Doctor</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Hospital</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Date & Time</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Fee</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Payment</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Status</th>
-                    <th className="py-4 px-6 text-sm font-semibold text-slate-700 text-left">Actions</th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start w-16">
+                      #
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("customer")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("doctor")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("provider")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("dateTime")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("fee")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("payment")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {t("status")}
+                    </th>
+                    <th className="py-4 px-4 text-sm font-semibold text-slate-700 text-start">
+                      {tCommon("actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedAppointments.map((appointment) => (
+                  {bookings.map((booking) => (
                     <tr
-                      key={appointment.id}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-all cursor-pointer"
+                      key={booking.id}
+                      className="border-b border-slate-100 hover:bg-slate-50 transition-all"
                     >
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="text-sm font-medium text-slate-500">
-                          #{appointment.id}
+                          #{booking.id}
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <User className="h-3 w-3 text-slate-400" />
-                            <div className="font-medium text-slate-900">{appointment.user_name}</div>
+                            <div className="font-medium text-slate-900">
+                              {booking.customer?.name || "-"}
+                            </div>
                           </div>
                           <div className="flex items-center gap-1 text-xs text-slate-500">
                             <Phone className="h-3 w-3 text-slate-400" />
-                            {appointment.user_phone}
+                            {booking.customer?.phone || "-"}
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <Stethoscope className="h-3 w-3 text-slate-400" />
-                            <div className="font-medium text-slate-900">{appointment.doctor_name}</div>
+                            <div className="font-medium text-slate-900">
+                              {booking.provider_doctor?.name || "-"}
+                            </div>
                           </div>
-                          <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200 font-medium text-xs">
-                            {appointment.specialty}
-                          </Badge>
+                          {booking.category_name && (
+                            <Badge className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200 font-medium text-xs">
+                              {booking.category_name}
+                            </Badge>
+                          )}
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="flex items-center gap-1 text-sm text-slate-700">
                           <Building2 className="h-3 w-3 text-slate-400" />
-                          <span className="text-xs">{appointment.hospital_name}</span>
+                          <span className="text-xs">
+                            {booking.provider?.name || "-"}
+                          </span>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1 text-sm text-slate-700">
                             <Calendar className="h-3 w-3 text-slate-400" />
-                            {new Date(appointment.date).toLocaleDateString()}
+                            {BookingsService.formatDate(booking.data_at, locale)}
                           </div>
                           <div className="flex items-center gap-1 text-xs text-slate-500">
                             <Clock className="h-3 w-3 text-slate-400" />
-                            {appointment.time}
+                            {booking.time || "-"}
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="text-sm font-medium text-slate-900">
-                          QAR {appointment.consultation_fee}
+                          {BookingsService.formatCurrency(booking.total)}
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <Badge className={`${getPaymentStatusColor(appointment.payment_status)} font-medium`}>
-                          {appointment.payment_status.charAt(0).toUpperCase() + appointment.payment_status.slice(1)}
+                      <td className="py-4 px-4">
+                        <Badge
+                          className={`${BookingsService.getPaymentMethodBadgeColor(
+                            booking.payment_method
+                          )} font-medium`}
+                        >
+                          {getPaymentIcon(booking.payment_method)}
+                          {getPaymentLabel(booking.payment_method)}
                         </Badge>
                       </td>
-                      <td className="py-4 px-6">
-                        <Badge className={`${getStatusColor(appointment.status)} font-medium`}>
-                          {getStatusIcon(appointment.status)}
-                          {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                      <td className="py-4 px-4">
+                        <Badge
+                          className={`${BookingsService.getStatusBadgeColor(
+                            booking.status
+                          )} font-medium`}
+                        >
+                          {getStatusIcon(booking.status)}
+                          {getStatusLabel(booking.status)}
                         </Badge>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-2 relative">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 relative" ref={openDropdown === booking.id ? dropdownRef : null}>
                           <div className="relative">
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleDropdown(appointment.id);
-                              }}
+                              onClick={(e) => toggleDropdown(e, booking.id)}
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
 
-                            {openDropdown === appointment.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <Eye className="h-4 w-4" />
-                                  View Details
-                                </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <Edit className="h-4 w-4" />
-                                  Edit Appointment
-                                </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                  <FileText className="h-4 w-4" />
-                                  View Notes
-                                </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 flex items-center gap-2 border-t border-slate-100">
-                                  <XCircle className="h-4 w-4" />
-                                  Cancel Appointment
-                                </button>
+                            {openDropdown === booking.id && (
+                              <div className="absolute end-0 mt-1 w-44 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                                {canView && (
+                                  <button
+                                    className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                    onClick={() => handleViewBooking(booking)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    {t("viewDetails")}
+                                  </button>
+                                )}
+                                {canEdit &&
+                                  BookingsService.getAllowedTransitions(booking.status)
+                                    .length > 0 && (
+                                    <button
+                                      className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                      onClick={() => handleChangeStatus(booking)}
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                      {t("changeStatus")}
+                                    </button>
+                                  )}
                               </div>
                             )}
                           </div>
@@ -399,12 +523,10 @@ export default function AppointmentsPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {meta.last_page > 1 && (
             <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-slate-200 gap-4">
               <div className="text-sm text-slate-600">
-                Showing {startIndex + 1} to{" "}
-                {Math.min(startIndex + itemsPerPage, filteredAppointments.length)} of{" "}
-                {filteredAppointments.length.toLocaleString()} appointments
+                {tCommon("showing")} {((currentPage - 1) * itemsPerPage) + 1} {tCommon("to")} {Math.min(currentPage * itemsPerPage, meta.total)} {tCommon("of")} {meta.total.toLocaleString()} {t("bookings")}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -413,17 +535,17 @@ export default function AppointmentsPage() {
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 >
-                  {t("previous")}
+                  {tCommon("previous")}
                 </Button>
 
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                {Array.from({ length: Math.min(5, meta.last_page) }, (_, i) => {
                   let pageNum;
-                  if (totalPages <= 5) {
+                  if (meta.last_page <= 5) {
                     pageNum = i + 1;
                   } else if (currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
+                  } else if (currentPage >= meta.last_page - 2) {
+                    pageNum = meta.last_page - 4 + i;
                   } else {
                     pageNum = currentPage - 2 + i;
                   }
@@ -435,7 +557,7 @@ export default function AppointmentsPage() {
                       size="sm"
                       className={
                         currentPage === pageNum
-                          ? "bg-pink-50 text-pink-600 border-pink-200"
+                          ? "bg-primary text-white border-primary"
                           : ""
                       }
                       onClick={() => setCurrentPage(pageNum)}
@@ -445,15 +567,15 @@ export default function AppointmentsPage() {
                   );
                 })}
 
-                {totalPages > 5 && currentPage < totalPages - 2 && (
+                {meta.last_page > 5 && currentPage < meta.last_page - 2 && (
                   <>
                     <span className="text-slate-400">...</span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(totalPages)}
+                      onClick={() => setCurrentPage(meta.last_page)}
                     >
-                      {totalPages}
+                      {meta.last_page}
                     </Button>
                   </>
                 )}
@@ -461,16 +583,36 @@ export default function AppointmentsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === meta.last_page}
+                  onClick={() => setCurrentPage((p) => Math.min(meta.last_page, p + 1))}
                 >
-                  {t("next")}
+                  {tCommon("next")}
                 </Button>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+      </div>
+
+      {/* View Modal */}
+      <BookingViewModal
+        open={viewModalOpen}
+        onClose={() => {
+          setViewModalOpen(false);
+          setSelectedBooking(null);
+        }}
+        booking={selectedBooking}
+      />
+
+      {/* Status Modal */}
+      <BookingStatusModal
+        open={statusModalOpen}
+        onClose={() => {
+          setStatusModalOpen(false);
+          setSelectedBooking(null);
+        }}
+        booking={selectedBooking}
+        onStatusUpdated={handleStatusUpdated}
+      />
     </DashboardLayout>
   );
 }

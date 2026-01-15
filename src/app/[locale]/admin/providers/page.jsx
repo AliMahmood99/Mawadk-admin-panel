@@ -338,14 +338,14 @@ export default function ProvidersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right w-16">#</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("provider")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("type")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("contact")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("statistics")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("rating")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("status")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-center w-20">{tc("actions")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start w-16">#</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("provider")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("type")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("contact")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("statistics")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("rating")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start">{t("status")}</th>
+                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-start w-20">{tc("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,18 +465,18 @@ export default function ProvidersPage() {
 
                               {openDropdown === provider.id && (
                                 <div
-                                  className="absolute left-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
+                                  className="absolute end-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <button
-                                    className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                    className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                     onClick={() => handleViewDetails(provider.id)}
                                   >
                                     <Eye className="h-4 w-4 text-slate-400" />
                                     {t("viewDetails")}
                                   </button>
                                   <button
-                                    className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                    className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                     onClick={() => handleEditProvider(provider)}
                                   >
                                     <Edit3 className="h-4 w-4 text-slate-400" />
@@ -484,7 +484,7 @@ export default function ProvidersPage() {
                                   </button>
                                   <div className="border-t border-slate-100 my-1" />
                                   <button
-                                    className="w-full px-3 py-2 text-right text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                    className="w-full px-3 py-2 text-start text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                                     onClick={() => handleToggleStatus(provider.id)}
                                   >
                                     {provider.status ? (
