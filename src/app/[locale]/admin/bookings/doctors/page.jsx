@@ -113,13 +113,7 @@ export default function DoctorBookingsPage() {
         (booking) => booking.provider?.type === "Doctor"
       );
 
-      // Sort by newest first (by created_at)
-      filteredData.sort((a, b) => {
-        const dateA = new Date(a.created_at || 0);
-        const dateB = new Date(b.created_at || 0);
-        return dateB - dateA;
-      });
-
+      // Data comes already sorted from API (newest first by created_at)
       setAllFilteredBookings(filteredData);
 
       // Calculate frontend pagination
