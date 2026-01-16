@@ -252,10 +252,33 @@ const BookingsService = {
   },
 
   /**
-   * Format time for display (handles "12:00 AM" format)
+   * Format time for display (handles various formats)
+   * @param {string} time - Time string
+   * @param {string} dateTime - Optional datetime string to extract time from
    */
-  formatTime: (time) => {
-    if (!time) return "-";
+  formatTime: (time, dateTime = null) => {
+    // If time is empty or is a placeholder "12:00 AM", try to extract from dateTime
+    if (!time || time === "12:00 AM" || time === "00:00") {
+      if (dateTime) {
+        try {
+          const date = new Date(dateTime);
+          if (!isNaN(date.getTime())) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            // Only use extracted time if it's not midnight (likely a date-only field)
+            if (hours !== 0 || minutes !== 0) {
+              const ampm = hours >= 12 ? "PM" : "AM";
+              const hour12 = hours % 12 || 12;
+              return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+            }
+          }
+        } catch {
+          // Fall through to return time or dash
+        }
+      }
+      if (!time) return "-";
+    }
+
     // If already in AM/PM format, return as is
     if (time.includes("AM") || time.includes("PM")) {
       return time;
