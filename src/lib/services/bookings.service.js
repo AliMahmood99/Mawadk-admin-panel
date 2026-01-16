@@ -304,6 +304,95 @@ const BookingsService = {
     if (isNaN(num)) return "-";
     return `${currency} ${num.toLocaleString()}`;
   },
+
+  /**
+   * Get relative time (e.g., "3 minutes ago" / "منذ 3 دقائق")
+   * @param {string} dateString - Date string (created_at)
+   * @param {string} locale - "en" or "ar"
+   */
+  getRelativeTime: (dateString, locale = "en") => {
+    if (!dateString) return "-";
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "-";
+
+      const now = new Date();
+      const diffMs = now - date;
+      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMins = Math.floor(diffSecs / 60);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      const diffWeeks = Math.floor(diffDays / 7);
+      const diffMonths = Math.floor(diffDays / 30);
+
+      const isArabic = locale === "ar";
+
+      // Just now (less than 1 minute)
+      if (diffMins < 1) {
+        return isArabic ? "الآن" : "Just now";
+      }
+
+      // Minutes
+      if (diffMins < 60) {
+        if (isArabic) {
+          if (diffMins === 1) return "منذ دقيقة";
+          if (diffMins === 2) return "منذ دقيقتين";
+          if (diffMins >= 3 && diffMins <= 10) return `منذ ${diffMins} دقائق`;
+          return `منذ ${diffMins} دقيقة`;
+        }
+        return diffMins === 1 ? "1 minute ago" : `${diffMins} minutes ago`;
+      }
+
+      // Hours
+      if (diffHours < 24) {
+        if (isArabic) {
+          if (diffHours === 1) return "منذ ساعة";
+          if (diffHours === 2) return "منذ ساعتين";
+          if (diffHours >= 3 && diffHours <= 10) return `منذ ${diffHours} ساعات`;
+          return `منذ ${diffHours} ساعة`;
+        }
+        return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+      }
+
+      // Days
+      if (diffDays < 7) {
+        if (isArabic) {
+          if (diffDays === 1) return "منذ يوم";
+          if (diffDays === 2) return "منذ يومين";
+          if (diffDays >= 3 && diffDays <= 10) return `منذ ${diffDays} أيام`;
+          return `منذ ${diffDays} يوم`;
+        }
+        return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+      }
+
+      // Weeks
+      if (diffWeeks < 4) {
+        if (isArabic) {
+          if (diffWeeks === 1) return "منذ أسبوع";
+          if (diffWeeks === 2) return "منذ أسبوعين";
+          return `منذ ${diffWeeks} أسابيع`;
+        }
+        return diffWeeks === 1 ? "1 week ago" : `${diffWeeks} weeks ago`;
+      }
+
+      // Months
+      if (diffMonths < 12) {
+        if (isArabic) {
+          if (diffMonths === 1) return "منذ شهر";
+          if (diffMonths === 2) return "منذ شهرين";
+          if (diffMonths >= 3 && diffMonths <= 10) return `منذ ${diffMonths} أشهر`;
+          return `منذ ${diffMonths} شهر`;
+        }
+        return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
+      }
+
+      // More than a year - show the date
+      return BookingsService.formatDate(dateString, locale);
+    } catch {
+      return "-";
+    }
+  },
 };
 
 export default BookingsService;

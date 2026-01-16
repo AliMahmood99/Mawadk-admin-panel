@@ -114,12 +114,9 @@ export default function ClinicBookingsPage() {
         (booking) => booking.provider?.type === "Clinic"
       );
 
-      // Sort by booking date descending (newest first)
+      // Sort by ID descending (newest bookings first - higher ID = newer booking)
       filteredData.sort((a, b) => {
-        // Use data_at (booking date) for sorting
-        const dateA = new Date(a.data_at || a.date || a.created_at || 0);
-        const dateB = new Date(b.data_at || b.date || b.created_at || 0);
-        return dateB - dateA; // Descending (newest first)
+        return (b.id || 0) - (a.id || 0); // Descending (newest first)
       });
 
       setAllFilteredBookings(filteredData);
@@ -486,6 +483,9 @@ export default function ClinicBookingsPage() {
                         <div className="flex items-center gap-1 text-xs text-slate-500">
                           <Clock className="h-3 w-3 text-slate-400" />
                           {BookingsService.formatTime(booking.time, booking.data_at)}
+                        </div>
+                        <div className="text-xs text-primary font-medium">
+                          {booking.created_at || "-"}
                         </div>
                       </div>
                     </td>
