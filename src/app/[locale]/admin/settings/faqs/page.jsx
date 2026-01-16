@@ -68,20 +68,44 @@ export default function FaqsListPage() {
         params.search = searchQuery;
       }
       const response = await SettingsService.getFaqs(params);
+      console.log("[FAQs] API Response:", response);
       // API returns { status: "success" } not { success: true }
       if (response.success || response.status === "success") {
-        // API returns data.Faqs (capital F) or data.data
-        const faqsData = response.data?.Faqs || response.data?.data || [];
+        // API returns data.Faqs (capital F) or data.data or data.items
+        const faqsData = response.data?.Faqs || response.data?.items || response.data?.data || [];
+        console.log("[FAQs] Raw data:", faqsData);
+
+        // Helper to extract translation data
+        const extractFaqData = (faq) => {
+          // If FAQ has translations array
+          if (faq.translations && Array.isArray(faq.translations)) {
+            const arTrans = faq.translations.find(t => t.locale === "ar") || {};
+            const enTrans = faq.translations.find(t => t.locale === "en") || {};
+            return {
+              id: faq.id,
+              question_ar: arTrans.title || "",
+              question_en: enTrans.title || "",
+              answer_ar: arTrans.description || "",
+              answer_en: enTrans.description || "",
+              order: faq.sort || faq.order || 0,
+              is_active: faq.is_active !== undefined ? faq.is_active : true,
+            };
+          }
+          // Fallback: direct fields
+          return {
+            id: faq.id,
+            question_ar: faq.title || faq.question_ar || "",
+            question_en: faq.title_en || faq.question_en || faq.title || "",
+            answer_ar: faq.description || faq.answer_ar || "",
+            answer_en: faq.description_en || faq.answer_en || "",
+            order: faq.sort || faq.order || 0,
+            is_active: faq.is_active !== undefined ? faq.is_active : true,
+          };
+        };
+
         // Map API structure to expected structure
-        const mappedFaqs = faqsData.map(faq => ({
-          id: faq.id,
-          question_ar: faq.title || faq.question_ar || "",
-          question_en: faq.title_en || faq.question_en || faq.title || "",
-          answer_ar: faq.description || faq.answer_ar || "",
-          answer_en: faq.description_en || faq.answer_en || "",
-          order: faq.sort || faq.order || 0,
-          is_active: faq.is_active !== undefined ? faq.is_active : true,
-        }));
+        const mappedFaqs = faqsData.map(extractFaqData);
+        console.log("[FAQs] Mapped data:", mappedFaqs);
         setFaqs(mappedFaqs);
         setTotalPages(response.data?.last_page || response.data?.meta?.last_page || 1);
         setTotalItems(response.data?.total || response.data?.meta?.total || faqsData.length);
@@ -113,7 +137,7 @@ export default function FaqsListPage() {
     try {
       setDeleting(true);
       const response = await SettingsService.deleteFaq(faqToDelete.id);
-      if (response.success) {
+      if (response.success || response.status === "success") {
         toast.success(t("deleteSuccess") || "FAQ deleted successfully");
         fetchFaqs();
       } else {

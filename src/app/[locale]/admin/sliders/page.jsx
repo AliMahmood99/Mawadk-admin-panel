@@ -300,18 +300,18 @@ export default function SlidersPage() {
                 <p className="text-slate-500">{t("noSlidersHint")}</p>
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-14">#</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-24">{t("image")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start">{t("titleColumn")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center">{t("type")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start">{t("link")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-16">{t("sort")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start">{t("dateRange")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center">{tc("status")}</th>
-                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-16">{tc("actions")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-center w-[50px]">#</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-center w-[90px]">{t("image")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-start w-[15%]">{t("titleColumn")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-center w-[100px]">{t("type")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-start w-[15%]">{t("link")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-center w-[60px]">{t("sort")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-start w-[14%]">{t("dateRange")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-center w-[90px]">{tc("status")}</th>
+                    <th className="py-3.5 px-3 text-sm font-semibold text-slate-600 text-center w-[60px]">{tc("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -321,14 +321,14 @@ export default function SlidersPage() {
                       className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                     >
                       {/* # */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-3 px-3 text-center w-[50px]">
                         <span className="text-sm text-slate-500 font-medium">
                           {(currentPage - 1) * itemsPerPage + index + 1}
                         </span>
                       </td>
                       {/* Image */}
-                      <td className="py-4 px-4">
-                        <div className="w-20 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 mx-auto">
+                      <td className="py-3 px-3 text-center w-[90px]">
+                        <div className="w-16 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 mx-auto">
                           {slider.image ? (
                             <img
                               src={slider.image}
@@ -337,31 +337,31 @@ export default function SlidersPage() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <ImageIcon className="h-5 w-5 text-slate-400" />
+                              <ImageIcon className="h-4 w-4 text-slate-400" />
                             </div>
                           )}
                         </div>
                       </td>
                       {/* Title */}
-                      <td className="py-4 px-4 text-start">
+                      <td className="py-3 px-3 text-start w-[15%]">
                         <button
                           onClick={() => handleView(slider)}
-                          className="hover:opacity-80 transition-opacity text-start"
+                          className="hover:opacity-80 transition-opacity text-start w-full"
                         >
-                          <div className="font-medium text-slate-900 line-clamp-1 max-w-[180px]">
+                          <div className="font-medium text-slate-900 line-clamp-1 truncate">
                             {slider.title}
                           </div>
                         </button>
                       </td>
                       {/* Type */}
-                      <td className="py-4 px-4 text-center">
-                        <Badge className={`gap-1 border ${getTypeBadgeStyle(slider.type)}`}>
+                      <td className="py-3 px-3 text-center w-[100px]">
+                        <Badge className={`gap-1 border text-xs ${getTypeBadgeStyle(slider.type)}`}>
                           {getTypeIcon(slider.type)}
                           {t(`type${slider.type}`)}
                         </Badge>
                       </td>
                       {/* Link */}
-                      <td className="py-4 px-4 text-start">
+                      <td className="py-3 px-3 text-start w-[15%]">
                         {slider.type === "None" ? (
                           <span className="text-slate-400 text-sm">-</span>
                         ) : (slider.type === "URL" || slider.type === "ULR") ? (
@@ -369,10 +369,10 @@ export default function SlidersPage() {
                             href={slider.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
+                            className="text-primary hover:underline inline-flex items-center gap-1 text-sm truncate max-w-full"
                           >
-                            <Link2 className="h-3.5 w-3.5" />
-                            {t("externalLink")}
+                            <Link2 className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="truncate">{t("externalLink")}</span>
                           </a>
                         ) : slider.typeModel ? (
                           <div className="flex items-center gap-2">
@@ -380,10 +380,10 @@ export default function SlidersPage() {
                               <img
                                 src={slider.typeModel.image}
                                 alt=""
-                                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                                className="w-6 h-6 rounded-full object-cover flex-shrink-0"
                               />
                             )}
-                            <span className="text-sm text-slate-700 line-clamp-1 max-w-[100px]">
+                            <span className="text-sm text-slate-700 line-clamp-1 truncate">
                               {slider.typeModel.name}
                             </span>
                           </div>
@@ -392,20 +392,20 @@ export default function SlidersPage() {
                         )}
                       </td>
                       {/* Sort */}
-                      <td className="py-4 px-4 text-center">
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                      <td className="py-3 px-3 text-center w-[60px]">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 text-xs">
                           {slider.sort}
                         </Badge>
                       </td>
                       {/* Date Range */}
-                      <td className="py-4 px-4 text-start">
+                      <td className="py-3 px-3 text-start w-[14%]">
                         {slider.start_at || slider.end_at ? (
-                          <div className="text-sm text-slate-600">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                              <span>{slider.start_at || "-"}</span>
+                          <div className="text-xs text-slate-600">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                              <span className="truncate">{slider.start_at || "-"}</span>
                             </div>
-                            <div className="text-xs text-slate-400 mt-0.5 ps-5">
+                            <div className="text-xs text-slate-400 mt-0.5 ps-4 truncate">
                               {t("until")} {slider.end_at || "-"}
                             </div>
                           </div>
@@ -414,21 +414,21 @@ export default function SlidersPage() {
                         )}
                       </td>
                       {/* Status */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-3 px-3 text-center w-[90px]">
                         {slider.status ? (
-                          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 gap-1">
+                          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 gap-1 text-xs">
                             <CheckCircle className="h-3 w-3" />
                             {tc("active")}
                           </Badge>
                         ) : (
-                          <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50 border border-rose-200 gap-1">
+                          <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50 border border-rose-200 gap-1 text-xs">
                             <XCircle className="h-3 w-3" />
                             {tc("inactive")}
                           </Badge>
                         )}
                       </td>
                       {/* Actions */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-3 px-3 text-center w-[60px]">
                         <div className="flex justify-center">
                           <div className="relative" ref={openDropdown === slider.id ? dropdownRef : null}>
                             <Button

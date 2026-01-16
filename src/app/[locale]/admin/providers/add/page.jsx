@@ -651,7 +651,12 @@ export default function AddProviderPage() {
                     <CardTitle className="text-lg">
                       {t("categories")} <span className="text-rose-500">*</span>
                     </CardTitle>
-                    <CardDescription>{t("categoriesDesc")}</CardDescription>
+                    <CardDescription>
+                      {formData.type === "Doctor"
+                        ? t("categoriesDescDoctor") || "Select one specialty for this doctor"
+                        : t("categoriesDescMulti") || "Select one or more categories"
+                      }
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -661,29 +666,71 @@ export default function AddProviderPage() {
                     <p className="text-rose-600 text-sm">{errors.categories}</p>
                   </div>
                 )}
+
+                {/* Selection hint badge */}
+                <div className="mb-4">
+                  <Badge variant={formData.type === "Doctor" ? "secondary" : "outline"} className="text-xs">
+                    {formData.type === "Doctor"
+                      ? t("singleSelect") || "Single selection"
+                      : t("multiSelect") || "Multiple selection"
+                    }
+                  </Badge>
+                  {selectedCategories.length > 0 && (
+                    <Badge variant="default" className="ms-2 text-xs">
+                      {selectedCategories.length} {t("selected") || "selected"}
+                    </Badge>
+                  )}
+                </div>
+
                 {isLoadingCategories ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
+                ) : categories.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <p>{t("noCategories") || "No categories available"}</p>
+                  </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map(category => (
-                      <button
-                        key={category.id}
-                        type="button"
-                        onClick={() => toggleCategory(category.id)}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                          selectedCategories.includes(category.id)
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-slate-200 text-slate-600 hover:border-slate-300"
-                        }`}
-                      >
-                        {selectedCategories.includes(category.id) && (
-                          <Check className="h-3 w-3 inline-block me-1" />
-                        )}
-                        {category.name}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {categories.map(category => {
+                      const isSelected = selectedCategories.includes(category.id);
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() => toggleCategory(category.id)}
+                          className={`p-3 rounded-xl border-2 text-sm font-medium transition-all text-start ${
+                            isSelected
+                              ? "border-primary bg-primary/5 text-primary shadow-sm"
+                              : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {category.image ? (
+                              <img
+                                src={category.image}
+                                alt={category.name}
+                                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                isSelected ? "bg-primary/20" : "bg-slate-100"
+                              }`}>
+                                <ImageIcon className={`h-5 w-5 ${isSelected ? "text-primary" : "text-slate-400"}`} />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                isSelected ? "border-primary bg-primary" : "border-slate-300"
+                              }`}>
+                                {isSelected && <Check className="h-3 w-3 text-white" />}
+                              </div>
+                              <span className="truncate">{category.name}</span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

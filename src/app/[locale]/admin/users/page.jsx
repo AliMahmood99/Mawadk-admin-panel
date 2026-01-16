@@ -329,16 +329,16 @@ export default function UsersPage() {
                 <p className="text-slate-500">{t("noUsersFound")}</p>
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right w-16">#</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("user")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("contact")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("bookings")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("dateJoined")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-right">{t("status")}</th>
-                    <th className="py-3.5 px-6 text-sm font-semibold text-slate-600 text-center w-20">{t("actions")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-[50px]">#</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start w-[18%]">{t("user")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-start w-[18%]">{t("contact")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-[12%]">{t("bookings")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-[16%]">{t("dateJoined")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-[10%]">{t("status")}</th>
+                    <th className="py-3.5 px-4 text-sm font-semibold text-slate-600 text-center w-[60px]">{t("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -347,47 +347,47 @@ export default function UsersPage() {
                       key={customer.id}
                       className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                     >
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-center w-[50px]">
                         <span className="text-sm text-slate-500 font-medium">
                           {(currentPage - 1) * itemsPerPage + index + 1}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-start w-[18%]">
                         <button
                           onClick={() => handleViewDetails(customer.id)}
-                          className="flex items-center gap-3 text-right hover:opacity-80 transition-opacity"
+                          className="flex items-center gap-3 hover:opacity-80 transition-opacity w-full"
                         >
                           {customer.image ? (
                             <img
                               src={customer.image}
                               alt={customer.name}
-                              className="h-10 w-10 rounded-xl object-cover"
+                              className="h-10 w-10 rounded-xl object-cover flex-shrink-0"
                             />
                           ) : (
-                            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+                            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center flex-shrink-0">
                               <span className="text-white font-semibold text-sm">
                                 {getInitials(customer.name)}
                               </span>
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium text-slate-900">{customer.name}</div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-slate-900 truncate">{customer.name}</div>
                           </div>
                         </button>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-start w-[18%]">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                            <Mail className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="truncate max-w-[150px]">{customer.email || "-"}</span>
+                            <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <span className="truncate">{customer.email || "-"}</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                            <Phone className="h-3.5 w-3.5 text-slate-400" />
-                            <span dir="ltr">{customer.phone}</span>
+                            <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <span dir="ltr" className="truncate">{customer.phone}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-center w-[12%]">
                         <div className="text-sm">
                           <span className="font-semibold text-slate-900">{customer.bookings_count || 0}</span>
                           <span className="text-slate-500"> {t("booking")}</span>
@@ -396,25 +396,25 @@ export default function UsersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-center w-[16%]">
                         <div className="text-sm text-slate-600">
                           {customer.created_at}
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-center w-[10%]">
                         {customer.status ? (
-                          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 gap-1">
+                          <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200 gap-1 text-xs">
                             <CheckCircle className="h-3 w-3" />
                             {t("active")}
                           </Badge>
                         ) : (
-                          <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50 border border-rose-200 gap-1">
+                          <Badge className="bg-rose-50 text-rose-700 hover:bg-rose-50 border border-rose-200 gap-1 text-xs">
                             <XCircle className="h-3 w-3" />
                             {t("inactive")}
                           </Badge>
                         )}
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 text-center w-[60px]">
                         <div className="flex justify-center">
                           <div className="relative" ref={openDropdown === customer.id ? dropdownRef : null}>
                             <Button

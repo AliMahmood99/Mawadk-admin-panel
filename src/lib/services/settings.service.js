@@ -66,34 +66,96 @@ const SettingsService = {
    * @returns {Promise<Object>} FAQ data
    */
   async getFaqById(id) {
+    console.log("[FAQs getFaqById] Fetching FAQ:", id);
     const response = await apiClient.get(`/faqs/${id}`);
+    console.log("[FAQs getFaqById] Response:", response.data);
     return response.data;
   },
 
   /**
    * Create new FAQ
-   * @param {Object} data - FAQ data
-   * @param {string} data.question_en - Question in English
-   * @param {string} data.question_ar - Question in Arabic
-   * @param {string} data.answer_en - Answer in English (HTML)
-   * @param {string} data.answer_ar - Answer in Arabic (HTML)
-   * @param {number} data.order - Display order
-   * @param {boolean} data.is_active - Active status
+   * @param {Object} data - FAQ data with ar/en translations
    * @returns {Promise<Object>} Created FAQ
    */
   async createFaq(data) {
-    const response = await apiClient.post("/faqs", data);
+    // API expects form-data format with ar[title], ar[description], etc.
+    const formData = new FormData();
+
+    if (data.ar) {
+      formData.append("ar[title]", data.ar.title || "");
+      formData.append("ar[description]", data.ar.description || "");
+    }
+    if (data.en) {
+      formData.append("en[title]", data.en.title || "");
+      formData.append("en[description]", data.en.description || "");
+    }
+    if (data.sort !== undefined) {
+      formData.append("sort", data.sort);
+    }
+    if (data.is_active !== undefined) {
+      formData.append("is_active", data.is_active);
+    }
+
+    // Debug logging
+    console.log("[FAQs createFaq] Sending data:", {
+      "ar[title]": data.ar?.title,
+      "ar[description]": data.ar?.description,
+      "en[title]": data.en?.title,
+      "en[description]": data.en?.description,
+      sort: data.sort,
+      is_active: data.is_active,
+    });
+
+    const response = await apiClient.post("/faqs", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    console.log("[FAQs createFaq] Response:", response.data);
     return response.data;
   },
 
   /**
    * Update existing FAQ
    * @param {number} id - FAQ ID
-   * @param {Object} data - FAQ data
+   * @param {Object} data - FAQ data with ar/en translations
    * @returns {Promise<Object>} Updated FAQ
    */
   async updateFaq(id, data) {
-    const response = await apiClient.post(`/faqs/${id}`, data);
+    // API expects form-data format with ar[title], ar[description], etc.
+    const formData = new FormData();
+
+    if (data.ar) {
+      formData.append("ar[title]", data.ar.title || "");
+      formData.append("ar[description]", data.ar.description || "");
+    }
+    if (data.en) {
+      formData.append("en[title]", data.en.title || "");
+      formData.append("en[description]", data.en.description || "");
+    }
+    if (data.sort !== undefined) {
+      formData.append("sort", data.sort);
+    }
+    if (data.is_active !== undefined) {
+      formData.append("is_active", data.is_active);
+    }
+
+    // Debug logging
+    console.log("[FAQs updateFaq] ID:", id, "Sending data:", {
+      "ar[title]": data.ar?.title,
+      "ar[description]": data.ar?.description,
+      "en[title]": data.en?.title,
+      "en[description]": data.en?.description,
+      sort: data.sort,
+      is_active: data.is_active,
+    });
+
+    const response = await apiClient.post(`/faqs/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    console.log("[FAQs updateFaq] Response:", response.data);
     return response.data;
   },
 
@@ -122,15 +184,27 @@ const SettingsService = {
   /**
    * Update info page
    * @param {string} slug - Page slug (about-us, terms-and-conditions)
-   * @param {Object} data - Page data
-   * @param {string} data.title_en - Title in English
-   * @param {string} data.title_ar - Title in Arabic
-   * @param {string} data.content_en - Content in English (HTML)
-   * @param {string} data.content_ar - Content in Arabic (HTML)
+   * @param {Object} data - Page data with ar/en translations
    * @returns {Promise<Object>} Updated info page
    */
   async updateInfoPage(slug, data) {
-    const response = await apiClient.post(`/info/${slug}`, data);
+    // API expects form-data format with ar[title], ar[description], etc.
+    const formData = new FormData();
+
+    if (data.ar) {
+      formData.append("ar[title]", data.ar.title || "");
+      formData.append("ar[description]", data.ar.description || "");
+    }
+    if (data.en) {
+      formData.append("en[title]", data.en.title || "");
+      formData.append("en[description]", data.en.description || "");
+    }
+
+    const response = await apiClient.post(`/info/${slug}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data;
   },
 };

@@ -141,7 +141,7 @@ export default function GeneralSettingsPage() {
 
       const response = await SettingsService.updateSettings(dataToSend);
 
-      if (response.success) {
+      if (response.success || response.status === "success") {
         toast.success(t("saveSuccess") || "Settings saved successfully");
         setOriginalData(formData);
         setOriginalLogo(logoPreview);

@@ -266,17 +266,25 @@ const ProvidersService = {
 
   /**
    * Get Categories Dropdown List
-   * GET /drop-down-list/categories
+   * GET /categories - Using the main categories endpoint with all data
    * @returns {Promise} - Array of categories for select
    */
   getCategoriesDropdown: async () => {
     try {
-      const response = await apiClient.get("/drop-down-list/categories");
+      // Use the main categories endpoint with high per_page to get all
+      const response = await apiClient.get("/categories", {
+        params: { per_page: 100 }
+      });
+
+      console.log("[ProvidersService] Categories API response:", response.data);
 
       if (response.data?.status === "success") {
+        // Extract items from the response
+        const items = response.data.data?.items || [];
+        console.log("[ProvidersService] Categories items:", items);
         return {
           success: true,
-          data: response.data.data || [],
+          data: items,
           message: response.data.message,
         };
       }
@@ -288,6 +296,7 @@ const ProvidersService = {
       };
     } catch (error) {
       console.error("[ProvidersService] Get categories dropdown error:", error);
+      console.error("[ProvidersService] Error response:", error.response?.data);
       return {
         success: false,
         data: [],
