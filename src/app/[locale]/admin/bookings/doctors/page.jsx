@@ -113,10 +113,10 @@ export default function DoctorBookingsPage() {
         (booking) => booking.provider?.type === "Doctor"
       );
 
-      // Sort by newest first (by date)
+      // Sort by newest first (by created_at)
       filteredData.sort((a, b) => {
-        const dateA = new Date(a.data_at || a.created_at || 0);
-        const dateB = new Date(b.data_at || b.created_at || 0);
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
         return dateB - dateA;
       });
 

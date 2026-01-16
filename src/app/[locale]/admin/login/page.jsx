@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
 
     if (result.success) {
       toast.success(t("loginSuccess"));
-      router.push("/admin/dashboard");
+      router.push("/admin/users");
     } else {
       toast.error(result.message || t("loginFailed"));
     }
